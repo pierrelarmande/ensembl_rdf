@@ -1,45 +1,136 @@
 import os
+import re
 import sys
 import json
 import datetime
+import argparse
 from ftplib import FTP
+from html.parser import HTMLParser
+from urllib.parse import urlparse, urljoin
+from urllib.request import urlopen
 
 
-def download_files(ftp, directory):
-    start_dir = ftp.pwd()
-    ftp.cwd(directory)
-    files = ftp.nlst()
-    # print(files)
+CONFIG_DIR = os.path.dirname(os.path.abspath(__file__)) + "/../config/"
+
+
+def log(msg):
+    dt_now = datetime.datetime.now()
+    print(f'[{dt_now}] {msg}', file=sys.stderr)
+
+
+class LinkParser(HTMLParser):
+    """Collect href values of an HTTP directory listing."""
+    def __init__(self):
+        super().__init__()
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            for name, value in attrs:
+                if name == "href" and value:
+                    self.links.append(value)
+
+
+class HttpSource:
+    def __init__(self, base_url):
+        self.base_url = base_url if base_url.endswith("/") else base_url + "/"
+
+    def list(self, path=""):
+        url = urljoin(self.base_url, path)
+        with urlopen(url) as res:
+            parser = LinkParser()
+            parser.feed(res.read().decode("utf-8", errors="replace"))
+        # Keep relative entries only (skip parent dir, sort links, absolute URLs)
+        entries = [l.rstrip("/") for l in parser.links
+                   if not l.startswith(("/", "?", "http")) and l not in ("../", "./")]
+        return entries
+
+    def fetch(self, path, dest):
+        url = urljoin(self.base_url, path)
+        with urlopen(url) as res, open(dest, 'wb') as f:
+            while True:
+                chunk = res.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+    def close(self):
+        return
+
+
+class FtpSource:
+    def __init__(self, host, base_dir):
+        self.ftp = FTP(host)
+        self.ftp.login()
+        self.base_dir = base_dir
+
+    def list(self, path=""):
+        return self.ftp.nlst(self.base_dir + "/" + path) if path else self.ftp.nlst(self.base_dir)
+
+    def fetch(self, path, dest):
+        with open(dest, 'wb') as f:
+            self.ftp.retrbinary('RETR %s' % (self.base_dir + "/" + path), f.write)
+
+    def close(self):
+        self.ftp.quit()
+
+
+def make_source(args):
+    # Backward compatible form: `download_files.py ftp.ensembl.org /pub/current_mysql/`
+    if args.directory:
+        return FtpSource(args.url, args.directory.rstrip("/"))
+    parsed = urlparse(args.url)
+    if parsed.scheme in ("http", "https"):
+        return HttpSource(args.url)
+    elif parsed.scheme == "ftp":
+        return FtpSource(parsed.netloc, parsed.path.rstrip("/"))
+    else:
+        sys.exit(f"Error: unsupported URL scheme '{parsed.scheme}' (use http(s):// or ftp://)")
+
+
+def download_files(source, directory, dbs):
+    files = [os.path.basename(f) for f in source.list(directory)]
     os.makedirs(directory, exist_ok=True)
     for file in files:
         if file in dbs:
-            dt_now = datetime.datetime.now()
-            print(f'[{dt_now}] Downloading: {directory}/{file}', file=sys.stderr)
-            with open(directory + "/" + file, 'wb') as f:
-                ftp.retrbinary('RETR %s' % file, f.write)
-    ftp.cwd(start_dir)
+            log(f'Downloading: {directory}/{file}')
+            source.fetch(directory + "/" + file, directory + "/" + file)
 
 
-def process_directory(ftp, directory):
-    ftp.cwd(directory)
-
-    subdirectories = ftp.nlst()
+def process_directory(source, dbs, species_patterns):
+    subdirectories = [os.path.basename(d) for d in source.list()]
     for subdirectory in subdirectories:
-        if '_core_' in subdirectory:
-            dt_now = datetime.datetime.now()
-            print(f'[{dt_now}] {subdirectory}', file=sys.stderr)
-            download_files(ftp, subdirectory)
+        if '_core_' not in subdirectory:
+            continue
+        if species_patterns and not any(re.search(p, subdirectory) for p in species_patterns):
+            continue
+        log(subdirectory)
+        download_files(source, subdirectory, dbs)
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) + "/"
-CONFIG_DIR = os.path.dirname(os.path.abspath(__file__)) + "/../config/"
-ftp_url = sys.argv[1]  # e.g. 'ftp.ensembl.org'
-ftp_dir = sys.argv[2]  # e.g. '/pub/current_mysql/'
+def main():
+    parser = argparse.ArgumentParser(
+        description="Download Ensembl core MySQL dumps listed in config/dbinfo.json.",
+        epilog="Examples:\n"
+               "  %(prog)s https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/\n"
+               "  %(prog)s ftp.ensembl.org /pub/current_mysql/\n"
+               "  %(prog)s https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/ -s arabidopsis_thaliana oryza_sativa",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("url", help="base URL of the mysql dump directory (https:// or ftp://), or an FTP host")
+    parser.add_argument("directory", nargs="?", help="FTP directory (legacy form, with an FTP host as first argument)")
+    parser.add_argument("-s", "--species", nargs="+", metavar="PATTERN",
+                        help="only download *_core_* directories matching one of these regexes")
+    parser.add_argument("--dbinfo", default=CONFIG_DIR + "dbinfo.json", help="dbinfo.json (default: config/dbinfo.json)")
+    args = parser.parse_args()
 
-with open(CONFIG_DIR+"dbinfo.json", "r") as f:
-    dbinfo = json.load(f)
-dbs = [dbinfo[k]["filename"] for k in dbinfo]
-ftp = FTP(ftp_url)
-ftp.login()
-process_directory(ftp, ftp_dir)
-ftp.quit()
+    with open(args.dbinfo, "r") as f:
+        dbinfo = json.load(f)
+    dbs = [dbinfo[k]["filename"] for k in dbinfo]
+
+    source = make_source(args)
+    process_directory(source, dbs, args.species)
+    source.close()
+
+
+if __name__ == '__main__':
+    main()
