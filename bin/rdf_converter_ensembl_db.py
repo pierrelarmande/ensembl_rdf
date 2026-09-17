@@ -15,7 +15,19 @@ def quote(string):
 
 
 def escape(string):
-    return re.sub(r"([()])", r"\\\1", string)
+    """Escape a stable ID for use as the local part of a Turtle prefixed name.
+
+    Characters of PN_LOCAL_ESC (Turtle grammar) are backslash-escaped, e.g. the
+    apostrophe of plastid exon IDs like `transcript-3'rps12-E1`. A trailing dot
+    is escaped too, as it would otherwise end the statement.
+    """
+    string = re.sub(r"([~!$&'()*+,;=/?#@%])", r"\\\1", string)
+    return re.sub(r"\.$", r"\\.", string)
+
+
+def iri_escape(string):
+    """Percent-encode characters not allowed inside an IRI written as <...>."""
+    return re.sub(r'[<>"{}|^`\\\s]', lambda m: "%%%02X" % ord(m.group()), string)
 
 
 def strand2faldo(s):
@@ -332,7 +344,7 @@ class Ensembl2turtle:
                         attrib_val = re.sub(r" .*", "", attrib[1])
                         if match:
                             comment = match.group(1)
-                            statement = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/#_" + stable_id + "-has_transcript_flag-"+attrib_val+">"
+                            statement = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/#_" + iri_escape(stable_id) + "-has_transcript_flag-"+attrib_val+">"
                             self.triple(statement, "a", "rdf:Statement")
                             self.triple(statement, "rdf:subject", sbj)
                             self.triple(statement, "rdf:predicate", "terms:has_transcript_flag")
@@ -487,7 +499,7 @@ class Ensembl2turtle:
             exon_stable_id = exon[exon_id][3]
             transcript_stable_id = transcript[transcript_id][7]
             rank = exon_transcript[id][0]
-            ordered_exon_uri = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/"+transcript_stable_id+"#Exon_"+rank+">"
+            ordered_exon_uri = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/"+iri_escape(transcript_stable_id)+"#Exon_"+rank+">"
             exon_uri = "ense:" + escape(exon_stable_id)
             transcript_uri = "enst:" + escape(transcript_stable_id)
 

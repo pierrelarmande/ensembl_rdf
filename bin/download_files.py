@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import json
 import datetime
@@ -8,6 +7,9 @@ from ftplib import FTP
 from html.parser import HTMLParser
 from urllib.parse import urlparse, urljoin
 from urllib.request import urlopen
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from species_config import load_species_file, match_core_dir
 
 
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__)) + "/../config/"
@@ -99,13 +101,15 @@ def download_files(source, directory, dbs):
 
 def process_directory(source, dbs, species_patterns):
     subdirectories = [os.path.basename(d) for d in source.list()]
+    found = False
     for subdirectory in subdirectories:
-        if '_core_' not in subdirectory:
+        if not match_core_dir(species_patterns, subdirectory):
             continue
-        if species_patterns and not any(re.search(p, subdirectory) for p in species_patterns):
-            continue
+        found = True
         log(subdirectory)
         download_files(source, subdirectory, dbs)
+    if not found:
+        log(f"Warning: no *_core_* directory matched {species_patterns}")
 
 
 def main():
@@ -114,21 +118,34 @@ def main():
         epilog="Examples:\n"
                "  %(prog)s https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/\n"
                "  %(prog)s ftp.ensembl.org /pub/current_mysql/\n"
-               "  %(prog)s https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/ -s arabidopsis_thaliana oryza_sativa",
+               "  %(prog)s https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/ -s arabidopsis_thaliana oryza_sativa\n"
+               "  %(prog)s -f config/species.yaml",
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("url", help="base URL of the mysql dump directory (https:// or ftp://), or an FTP host")
+    parser.add_argument("url", nargs="?", help="base URL of the mysql dump directory (https:// or ftp://), or an FTP host; "
+                                               "may be omitted if the species file has a `url` key")
     parser.add_argument("directory", nargs="?", help="FTP directory (legacy form, with an FTP host as first argument)")
-    parser.add_argument("-s", "--species", nargs="+", metavar="PATTERN",
-                        help="only download *_core_* directories matching one of these regexes")
+    parser.add_argument("-s", "--species", nargs="+", default=[], metavar="NAME",
+                        help="only download these species (production name, e.g. arabidopsis_thaliana; a regex is accepted)")
+    parser.add_argument("-f", "--species-file", metavar="FILE",
+                        help="YAML file with a `species` list and optionally a `url` (see config/species.yaml)")
     parser.add_argument("--dbinfo", default=CONFIG_DIR + "dbinfo.json", help="dbinfo.json (default: config/dbinfo.json)")
     args = parser.parse_args()
+
+    species = list(args.species)
+    if args.species_file:
+        url, file_species = load_species_file(args.species_file)
+        species += file_species
+        if not args.url:
+            args.url = url
+    if not args.url:
+        parser.error("no URL given (either on the command line or as `url` in the species file)")
 
     with open(args.dbinfo, "r") as f:
         dbinfo = json.load(f)
     dbs = [dbinfo[k]["filename"] for k in dbinfo]
 
     source = make_source(args)
-    process_directory(source, dbs, args.species)
+    process_directory(source, dbs, species)
     source.close()
 
 

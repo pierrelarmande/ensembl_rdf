@@ -7,13 +7,24 @@ $ python3 /path/to/ensembl_rdf/bin/download_files.py https://ftp.ebi.ac.uk/pub/e
 # Ensembl (vertebrates)
 $ python3 /path/to/ensembl_rdf/bin/download_files.py https://ftp.ensembl.org/pub/current_mysql/
 ```
-Use `-s PATTERN [PATTERN ...]` to restrict to species directories matching a regex, e.g. `-s '^arabidopsis_thaliana_' '^oryza_sativa_'`.
 The legacy form `download_files.py ftp.ensembl.org /pub/current_mysql/` (FTP host + directory) is still accepted.
+
+### Selecting species
+By default every `*_core_*` database is downloaded. To restrict to some species, give their production names (the directory name before `_core_`; a regular expression is accepted) with `-s`, or list them in a YAML file given with `-f` (see [config/species.yaml](config/species.yaml), which may also hold the `url`):
+```
+$ python3 /path/to/ensembl_rdf/bin/download_files.py https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/ -s arabidopsis_thaliana oryza_sativa
+$ python3 /path/to/ensembl_rdf/bin/download_files.py -f /path/to/ensembl_rdf/config/species.yaml
+```
+Reading a species file requires [PyYAML](https://pypi.org/project/PyYAML/).
+
 ## RDF conversion
-In the directory where `download_files.py` were executed, run `convert.sh`.
+In the directory where `download_files.py` was executed, run `convert.sh` with the directories to convert, or the same species selection (`-s` / `-f`) as above:
 ```
 $ bash /path/to/ensembl_rdf/bin/convert.sh *_core_*
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s arabidopsis_thaliana
+$ bash /path/to/ensembl_rdf/bin/convert.sh -f /path/to/ensembl_rdf/config/species.yaml
 ```
+`convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
 ## RDF schema
 [RDF-config](https://github.com/dbcls/rdf-config/blob/master/config/ensembl/model.yaml)

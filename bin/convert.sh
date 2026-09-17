@@ -6,9 +6,46 @@ CONFIG_DIR=$SCRIPT_DIR/../config
 # 分割処理の最大行数
 SPLIT_THRESHOLD=20000000
 
-if [ "$#" -eq 0 ]; then
-    echo "Usage: $0 <dir1> [dir2 ...]" >&2
+usage() {
+    cat >&2 <<EOT
+Usage: $0 [-s SPECIES ...] [-f SPECIES_YAML] [dir ...]
+Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
+<species>_core_* directories of the current directory.
+  -s SPECIES  production name (e.g. arabidopsis_thaliana); may be repeated
+  -f FILE     YAML file with a \`species\` list (see config/species.yaml)
+  dir         core database directory (as downloaded by download_files.py)
+EOT
     exit 1
+}
+
+species=()
+species_file=""
+while getopts "s:f:h" opt; do
+    case $opt in
+        s) species+=("$OPTARG") ;;
+        f) species_file=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+dirs=("$@")
+if [ -n "$species_file" ]; then
+    while IFS= read -r d; do
+        dirs+=("$d")
+    done < <(python3 "$SCRIPT_DIR/species_config.py" "$species_file" *_core_*)
+fi
+for sp in "${species[@]+"${species[@]}"}"; do
+    matched=$(ls -d ${sp}_core_* 2>/dev/null || true)
+    if [ -z "$matched" ]; then
+        echo "Warning: no directory matches ${sp}_core_*, skipping." >&2
+        continue
+    fi
+    for d in $matched; do dirs+=("$d"); done
+done
+
+if [ "${#dirs[@]}" -eq 0 ]; then
+    usage
 fi
 
 # Turtle ファイルを分割して rapper で処理する関数
@@ -63,7 +100,7 @@ process_turtle_file() {
     fi
 }
 
-for d in "$@"; do
+for d in "${dirs[@]}"; do
     if [ ! -d "$d" ]; then
         echo "Warning: '$d' is not a directory or does not exist, skipping." >&2
         continue

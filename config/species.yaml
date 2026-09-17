@@ -1,0 +1,11 @@
+# List of species to process (download_files.py -f / convert.sh -f).
+#
+# url: base URL of the MySQL dump directory (https:// or ftp://).
+#      Optional; can be overridden by the URL given on the command line.
+# species: production names, i.e. the directory name before `_core_`
+#      (e.g. arabidopsis_thaliana for arabidopsis_thaliana_core_63_116_11).
+#      A regular expression is accepted too (e.g. oryza_.* for every rice).
+url: https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
+species:
+  - arabidopsis_thaliana
+  - oryza_sativa
