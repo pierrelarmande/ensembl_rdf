@@ -1,5 +1,6 @@
 import gzip
 import sys
+import argparse
 import os
 import psutil
 import json
@@ -120,7 +121,21 @@ class Ensembl2turtle:
 
     base_dir = os.path.dirname(os.path.abspath(__file__)) + "/../"
 
-    def __init__(self, input_dbinfo_file):
+    # Entity types that can be output (one Turtle file each), in output order,
+    # with the tables each one needs. `meta`, `seq_region` and `coord_system`
+    # are always loaded.
+    entity_tables = {
+        "gene": ["gene", "xref", "external_synonym"],
+        "transcript": ["transcript", "transcript_attrib", "attrib_type", "xref", "gene", "translation"],
+        "translation": ["translation", "transcript"],
+        "exon": ["exon"],
+        "exon_transcript": ["exon_transcript", "transcript", "exon"],
+        "xref": ["gene", "transcript", "translation", "xref", "object_xref", "external_db"]
+    }
+    entities = list(entity_tables.keys())
+
+    def __init__(self, input_dbinfo_file, entities=None):
+        self.entities = [e for e in Ensembl2turtle.entities if entities is None or e in entities]
         self.dbinfo = self.load_dbinfo(input_dbinfo_file)
         self.dbs = self.load_dbs()
         # self.taxonomy_id = self.get_taxonomy_id()
@@ -230,8 +245,13 @@ class Ensembl2turtle:
         return dic
 
     def load_dbs(self):
+        needed = {"meta", "seq_region", "coord_system"}
+        for entity in self.entities:
+            needed.update(Ensembl2turtle.entity_tables[entity])
         db_dics = {}
         for db in self.dbinfo:
+            if db not in needed:
+                continue
             db_dics[db] = self.load_db(db)
             process = psutil.Process()
             memory_usage = process.memory_info().rss  # バイト単位でのメモリ使用量
@@ -565,25 +585,26 @@ class Ensembl2turtle:
         return
 
     def output_turtle(self):
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: gene", file=sys.stderr)
-        self.rdfize_gene()
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: transcript", file=sys.stderr)
-        self.rdfize_transcript()
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: translation", file=sys.stderr)
-        self.rdfize_translation()
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: exon", file=sys.stderr)
-        self.rdfize_exon()
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: exon_transcript", file=sys.stderr)
-        self.rdfize_exon_transcript()
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Output turtle: xref", file=sys.stderr)
-        self.rdfize_xref()
+        rdfizers = {
+            "gene": self.rdfize_gene,
+            "transcript": self.rdfize_transcript,
+            "translation": self.rdfize_translation,
+            "exon": self.rdfize_exon,
+            "exon_transcript": self.rdfize_exon_transcript,
+            "xref": self.rdfize_xref
+        }
+        for entity in self.entities:
+            dt_now = datetime.datetime.now()
+            print(f"[{dt_now}] Output turtle: {entity}", file=sys.stderr)
+            rdfizers[entity]()
 
+        if "xref" in self.entities:
+            self.output_xref_report()
+
+        dt_now = datetime.datetime.now()
+        print(f"[{dt_now}] Done.", file=sys.stderr)
+
+    def output_xref_report(self):
         with open("xref_report.tsv", "w") as f:
             cwd = os.getcwd()
             dir_prod_name = re.sub(r"(.*/)|(_core_[^/]+$)", "", cwd)
@@ -596,16 +617,46 @@ class Ensembl2turtle:
                     print(dir_prod_name, "unknown", subject_type, db,
                           dbs[db][0], dbs[db][1], dbs[db][2], sep="\t", file=f)
 
-        dt_now = datetime.datetime.now()
-        print(f"[{dt_now}] Done.", file=sys.stderr)
+
+def select_entities(include=None, exclude=None):
+    """Return the entity types to process, in output order.
+
+    `include` restricts to these types (default: all), `exclude` removes some.
+    Both accept names separated by commas or spaces. Unknown names are an error.
+    """
+    def parse(names):
+        result = []
+        for n in names or []:
+            result += [x for x in re.split(r"[,\s]+", n) if x]
+        unknown = [x for x in result if x not in Ensembl2turtle.entities]
+        if unknown:
+            sys.exit(f"Error: unknown entity type(s) {unknown}; choose among {Ensembl2turtle.entities}")
+        return result
+
+    selected = parse(include) or list(Ensembl2turtle.entities)
+    excluded = parse(exclude)
+    return [e for e in Ensembl2turtle.entities if e in selected and e not in excluded]
 
 
 def main():
-    input_dbinfo_file = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description="Convert the Ensembl core MySQL dumps of the current directory to Turtle files "
+                    "(one per entity type: " + ", ".join(Ensembl2turtle.entities) + ").")
+    parser.add_argument("dbinfo", help="config/dbinfo.json")
+    parser.add_argument("-e", "--entities", nargs="+", metavar="ENTITY",
+                        help="only output these entity types (default: all)")
+    parser.add_argument("-x", "--exclude", nargs="+", metavar="ENTITY",
+                        help="do not output these entity types (e.g. exon exon_transcript)")
+    parser.add_argument("--list-entities", action="store_true",
+                        help="print the selected entity types and exit (used by convert.sh)")
+    args = parser.parse_args()
 
-    converter = Ensembl2turtle(input_dbinfo_file)
-    #converter.rdfize_gene()
-    #print(converter.dbs['meta'].keys())
+    entities = select_entities(args.entities, args.exclude)
+    if args.list_entities:
+        print(" ".join(entities))
+        return
+    print(f"Entities: {' '.join(entities)}", file=sys.stderr)
+    converter = Ensembl2turtle(args.dbinfo, entities)
     converter.output_turtle()
 
 

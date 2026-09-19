@@ -24,6 +24,14 @@ $ bash /path/to/ensembl_rdf/bin/convert.sh *_core_*
 $ bash /path/to/ensembl_rdf/bin/convert.sh -s arabidopsis_thaliana
 $ bash /path/to/ensembl_rdf/bin/convert.sh -f /path/to/ensembl_rdf/config/species.yaml
 ```
+### Selecting entity types
+Each entity type is written to its own Turtle file: `gene`, `transcript`, `translation`, `exon`, `exon_transcript`, `xref`. All are output by default; restrict with `-e` (only these) or `-x` (all but these), on the command line or as `entities` / `exclude` lists in the YAML file. Only the tables needed by the selected types are loaded.
+```
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -x exon -x exon_transcript
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -e gene -e transcript
+```
+The converter itself accepts the same selection: `rdf_converter_ensembl_db.py config/dbinfo.json -x exon exon_transcript`.
+
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
 ## RDF schema

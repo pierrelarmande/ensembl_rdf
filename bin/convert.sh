@@ -8,11 +8,14 @@ SPLIT_THRESHOLD=20000000
 
 usage() {
     cat >&2 <<EOT
-Usage: $0 [-s SPECIES ...] [-f SPECIES_YAML] [dir ...]
+Usage: $0 [-s SPECIES ...] [-f CONFIG_YAML] [-e ENTITY ...] [-x ENTITY ...] [dir ...]
 Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
 <species>_core_* directories of the current directory.
   -s SPECIES  production name (e.g. arabidopsis_thaliana); may be repeated
-  -f FILE     YAML file with a \`species\` list (see config/species.yaml)
+  -f FILE     YAML file with \`species\`, \`entities\`, \`exclude\` lists (see config/species.yaml)
+  -e ENTITY   only output this entity type; may be repeated (default: all of
+              gene transcript translation exon exon_transcript xref)
+  -x ENTITY   do not output this entity type; may be repeated
   dir         core database directory (as downloaded by download_files.py)
 EOT
     exit 1
@@ -20,10 +23,14 @@ EOT
 
 species=()
 species_file=""
-while getopts "s:f:h" opt; do
+entities=()
+exclude=()
+while getopts "s:f:e:x:h" opt; do
     case $opt in
         s) species+=("$OPTARG") ;;
         f) species_file=$OPTARG ;;
+        e) entities+=("$OPTARG") ;;
+        x) exclude+=("$OPTARG") ;;
         *) usage ;;
     esac
 done
@@ -33,8 +40,17 @@ dirs=("$@")
 if [ -n "$species_file" ]; then
     while IFS= read -r d; do
         dirs+=("$d")
-    done < <(python3 "$SCRIPT_DIR/species_config.py" "$species_file" *_core_*)
+    done < <(python3 "$SCRIPT_DIR/species_config.py" dirs "$species_file" *_core_*)
+    for e in $(python3 "$SCRIPT_DIR/species_config.py" entities "$species_file"); do entities+=("$e"); done
+    for e in $(python3 "$SCRIPT_DIR/species_config.py" exclude "$species_file"); do exclude+=("$e"); done
 fi
+
+# Entity selection, passed to the converter and used for the rapper/gzip loop
+entity_opts=()
+if [ "${#entities[@]}" -gt 0 ]; then entity_opts+=(-e "${entities[@]}"); fi
+if [ "${#exclude[@]}" -gt 0 ]; then entity_opts+=(-x "${exclude[@]}"); fi
+selected=$(python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" --list-entities "$CONFIG_DIR/dbinfo.json" "${entity_opts[@]+"${entity_opts[@]}"}")
+echo "Entities: $selected" >&2
 for sp in "${species[@]+"${species[@]}"}"; do
     matched=$(ls -d ${sp}_core_* 2>/dev/null || true)
     if [ -z "$matched" ]; then
@@ -108,9 +124,9 @@ for d in "${dirs[@]}"; do
 
     echo "$d" >&2
     cd "$d"
-    python3 $SCRIPT_DIR/rdf_converter_ensembl_db.py $CONFIG_DIR/dbinfo.json
+    python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" "$CONFIG_DIR/dbinfo.json" "${entity_opts[@]+"${entity_opts[@]}"}"
     #echo "Validating turtle files..."
-    for f in gene transcript translation exon exon_transcript xref; do
+    for f in $selected; do
         if [ -f "$f.ttl" ]; then
             process_turtle_file "$f.ttl"
             gzip -f "$f.ttl"

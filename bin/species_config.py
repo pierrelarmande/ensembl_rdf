@@ -7,18 +7,34 @@ import re
 import sys
 
 
-def load_species_file(path):
-    """Return (url, [species]) from a YAML file with keys `url` (optional) and `species`."""
+def _as_list(value):
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return [str(v) for v in value]
+
+
+def load_config(path):
+    """Return the YAML config as a dict with keys url, species, entities, exclude."""
     try:
         import yaml
     except ImportError:
         sys.exit("Error: PyYAML is required to read a species file (pip install pyyaml)")
     with open(path, "r") as f:
         conf = yaml.safe_load(f) or {}
-    species = conf.get("species") or []
-    if isinstance(species, str):
-        species = [species]
-    return conf.get("url"), [str(s) for s in species]
+    return {
+        "url": conf.get("url"),
+        "species": _as_list(conf.get("species")),
+        "entities": _as_list(conf.get("entities")),
+        "exclude": _as_list(conf.get("exclude")),
+    }
+
+
+def load_species_file(path):
+    """Return (url, [species]) from a YAML file with keys `url` (optional) and `species`."""
+    conf = load_config(path)
+    return conf["url"], conf["species"]
 
 
 def match_core_dir(species_patterns, dirname):
@@ -31,11 +47,13 @@ def match_core_dir(species_patterns, dirname):
 
 
 if __name__ == "__main__":
-    # Usage: species_config.py FILE [DIR ...]
-    # Prints the matching core directories among DIR (or the species list if none given).
-    url, species = load_species_file(sys.argv[1])
-    dirs = sys.argv[2:]
-    if dirs:
-        print("\n".join(d for d in dirs if match_core_dir(species, d.rstrip("/"))))
+    # Usage: species_config.py dirs FILE [DIR ...]   -> core directories of the file's species among DIR
+    #        species_config.py entities FILE         -> the file's `entities` list (space separated)
+    #        species_config.py exclude FILE          -> the file's `exclude` list (space separated)
+    if len(sys.argv) < 3 or sys.argv[1] not in ("dirs", "entities", "exclude"):
+        sys.exit(__doc__)
+    conf = load_config(sys.argv[2])
+    if sys.argv[1] == "dirs":
+        print("\n".join(d for d in sys.argv[3:] if match_core_dir(conf["species"], d.rstrip("/"))))
     else:
-        print("\n".join(species))
+        print(" ".join(conf[sys.argv[1]]))

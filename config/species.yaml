@@ -5,7 +5,12 @@
 # species: production names, i.e. the directory name before `_core_`
 #      (e.g. arabidopsis_thaliana for arabidopsis_thaliana_core_63_116_11).
 #      A regular expression is accepted too (e.g. oryza_.* for every rice).
+# entities: entity types to output (convert.sh only). Optional; default: all of
+#      gene, transcript, translation, exon, exon_transcript, xref.
+# exclude: entity types not to output. Optional.
 url: https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
 species:
   - arabidopsis_thaliana
   - oryza_sativa
+# entities: [gene, transcript, translation, xref]
+# exclude: [exon, exon_transcript]
