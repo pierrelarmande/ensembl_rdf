@@ -13,4 +13,4 @@ species:
   - arabidopsis_thaliana
   - oryza_sativa
 # entities: [gene, transcript, translation, xref]
-# exclude: [exon, exon_transcript]
+# exclude: [exon]   # exon_transcript is then skipped too

@@ -635,7 +635,12 @@ def select_entities(include=None, exclude=None):
 
     selected = parse(include) or list(Ensembl2turtle.entities)
     excluded = parse(exclude)
-    return [e for e in Ensembl2turtle.entities if e in selected and e not in excluded]
+    result = [e for e in Ensembl2turtle.entities if e in selected and e not in excluded]
+    # exon_transcript only links transcripts to exons, so it is meaningless without them
+    if "exon_transcript" in result and "exon" not in result:
+        print("Warning: exon is not selected, exon_transcript is skipped too", file=sys.stderr)
+        result.remove("exon_transcript")
+    return result
 
 
 def main():
