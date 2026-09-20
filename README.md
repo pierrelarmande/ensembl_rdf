@@ -32,6 +32,13 @@ $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -e gene -e transcript
 ```
 The converter itself accepts the same selection: `rdf_converter_ensembl_db.py config/dbinfo.json -x exon`.
 
+### Base URI
+Resource URIs are built on `http://rdf.ebi.ac.uk` by default (`http://rdf.ebi.ac.uk/resource/ensembl/ENSG...`, `.../resource/ensembl.transcript/...`, chromosomes `.../resource/ensembl/116/oryza_sativa/IRGSP-1.0/1`). Change the base with `-b` or `base_uri` in the YAML file:
+```
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -b http://purl.agrold.org
+```
+gives `http://purl.agrold.org/resource/ensembl/...`. The `terms:` vocabulary (classes and properties defined in [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl)) keeps the `http://rdf.ebi.ac.uk/terms/ensembl/` namespace unless `-t` / `terms_uri` is given; the ontology file must then be republished with the same namespace.
+
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
 ## RDF schema

@@ -8,9 +8,14 @@
 # entities: entity types to output (convert.sh only). Optional; default: all of
 #      gene, transcript, translation, exon, exon_transcript, xref.
 # exclude: entity types not to output. Optional.
+# base_uri: base of the resource URIs (convert.sh only). Optional; default
+#      http://rdf.ebi.ac.uk, giving http://rdf.ebi.ac.uk/resource/ensembl/...
+# terms_uri: namespace of the terms: vocabulary. Optional; default
+#      http://rdf.ebi.ac.uk/terms/ensembl/
 url: https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
 species:
   - arabidopsis_thaliana
   - oryza_sativa
 # entities: [gene, transcript, translation, xref]
 # exclude: [exon]   # exon_transcript is then skipped too
+# base_uri: http://purl.agrold.org

@@ -59,7 +59,12 @@ class Bnode:
 
 
 class Ensembl2turtle:
-    prefixes = [
+    # Base of the resource URIs (genes, transcripts, proteins, exons, chromosomes)
+    # and namespace of the terms:/ontology vocabulary. Both can be overridden.
+    default_base_uri = "http://rdf.ebi.ac.uk"
+    default_terms_uri = "http://rdf.ebi.ac.uk/terms/ensembl/"
+
+    common_prefixes = [
         ['rdf:', '<http://www.w3.org/1999/02/22-rdf-syntax-ns#>'],
         ['rdfs:', '<http://www.w3.org/2000/01/rdf-schema#>'],
         ['faldo:', '<http://biohackathon.org/resource/faldo#>'],
@@ -68,12 +73,7 @@ class Ensembl2turtle:
         ['dc:', '<http://purl.org/dc/elements/1.1/>'],
         ['dcterms:', '<http://purl.org/dc/terms/>'],
         ['owl:', '<http://www.w3.org/2002/07/owl#>'],
-        ['ensg:', '<http://rdf.ebi.ac.uk/resource/ensembl/>'],
         ['ensgloss:', '<http://ensembl.org/glossary/>'],
-        ['terms:', '<http://rdf.ebi.ac.uk/terms/ensembl/>'],
-        ['ense:', '<http://rdf.ebi.ac.uk/resource/ensembl.exon/>'],
-        ['ensp:', '<http://rdf.ebi.ac.uk/resource/ensembl.protein/>'],
-        ['enst:', '<http://rdf.ebi.ac.uk/resource/ensembl.transcript/>'],
         ['ensi:', '<http://identifiers.org/ensembl/>'],
         ['taxonomy:', '<http://identifiers.org/taxonomy/>'],
         ['uniprot:', '<http://purl.uniprot.org/uniprot/>'],
@@ -134,8 +134,18 @@ class Ensembl2turtle:
     }
     entities = list(entity_tables.keys())
 
-    def __init__(self, input_dbinfo_file, entities=None):
+    def __init__(self, input_dbinfo_file, entities=None, base_uri=None, terms_uri=None):
         self.entities = [e for e in Ensembl2turtle.entities if entities is None or e in entities]
+        self.base_uri = (base_uri or Ensembl2turtle.default_base_uri).rstrip("/")
+        self.terms_uri = terms_uri or Ensembl2turtle.default_terms_uri
+        self.resource_uri = self.base_uri + "/resource/ensembl"  # e.g. http://rdf.ebi.ac.uk/resource/ensembl
+        self.prefixes = Ensembl2turtle.common_prefixes + [
+            ['ensg:', '<' + self.resource_uri + '/>'],
+            ['terms:', '<' + self.terms_uri + '>'],
+            ['ense:', '<' + self.resource_uri + '.exon/>'],
+            ['ensp:', '<' + self.resource_uri + '.protein/>'],
+            ['enst:', '<' + self.resource_uri + '.transcript/>'],
+        ]
         self.dbinfo = self.load_dbinfo(input_dbinfo_file)
         self.dbs = self.load_dbs()
         # self.taxonomy_id = self.get_taxonomy_id()
@@ -364,7 +374,7 @@ class Ensembl2turtle:
                         attrib_val = re.sub(r" .*", "", attrib[1])
                         if match:
                             comment = match.group(1)
-                            statement = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/#_" + iri_escape(stable_id) + "-has_transcript_flag-"+attrib_val+">"
+                            statement = "<" + self.resource_uri + ".transcript/#_" + iri_escape(stable_id) + "-has_transcript_flag-"+attrib_val+">"
                             self.triple(statement, "a", "rdf:Statement")
                             self.triple(statement, "rdf:subject", sbj)
                             self.triple(statement, "rdf:predicate", "terms:has_transcript_flag")
@@ -430,10 +440,10 @@ class Ensembl2turtle:
         # e.g. "GRCm38"
         coord_system_version = coord_system[coord_system_id][2]
         # e.g. <http://rdf.ebi.ac.uk/resource/ensembl/109/mus_musculus/GRCm38/Y>
-        chromosome_url = "<http://rdf.ebi.ac.uk/resource/ensembl/"+self.ensembl_version+"/"+production_name+"/"+coord_system_version+"/"+chromosome_name+">"
+        chromosome_url = "<"+self.resource_uri+"/"+self.ensembl_version+"/"+production_name+"/"+coord_system_version+"/"+chromosome_name+">"
         # For LRG, <http://rdf.ebi.ac.uk/resource/ensembl/109/homo_sapiens/LRG_1>">"
         if coord_system[coord_system_id][1] == "lrg":
-            chromosome_url = "<http://rdf.ebi.ac.uk/resource/ensembl/"+self.ensembl_version+"/"+production_name+"/"+chromosome_name+">"
+            chromosome_url = "<"+self.resource_uri+"/"+self.ensembl_version+"/"+production_name+"/"+chromosome_name+">"
         chromosome_urls.append(chromosome_url)
 
         if self.seq_region_id_to_taxonomy_id(seq_region_id) == "9606":
@@ -466,7 +476,6 @@ class Ensembl2turtle:
 
     def rdfize_translation(self):
         transcript = self.dbs["transcript"]
-        xref = self.dbs["xref"]
         translation = self.dbs["translation"]
         f = open("translation.ttl", mode="w")
         self.output_file = f
@@ -482,9 +491,7 @@ class Ensembl2turtle:
         return
 
     def rdfize_exon(self):
-        transcript = self.dbs["transcript"]
         exon = self.dbs["exon"]
-        translation = self.dbs["translation"]
         f = open("exon.ttl", mode="w")
         self.output_file = f
         self.output_prefixes()
@@ -519,7 +526,7 @@ class Ensembl2turtle:
             exon_stable_id = exon[exon_id][3]
             transcript_stable_id = transcript[transcript_id][7]
             rank = exon_transcript[id][0]
-            ordered_exon_uri = "<http://rdf.ebi.ac.uk/resource/ensembl.transcript/"+iri_escape(transcript_stable_id)+"#Exon_"+rank+">"
+            ordered_exon_uri = "<"+self.resource_uri+".transcript/"+iri_escape(transcript_stable_id)+"#Exon_"+rank+">"
             exon_uri = "ense:" + escape(exon_stable_id)
             transcript_uri = "enst:" + escape(transcript_stable_id)
 
@@ -580,7 +587,7 @@ class Ensembl2turtle:
         return
 
     def output_prefixes(self):
-        for prefix in Ensembl2turtle.prefixes:
+        for prefix in self.prefixes:
             self.triple("@prefix", prefix[0], prefix[1])
         return
 
@@ -652,6 +659,11 @@ def main():
                         help="only output these entity types (default: all)")
     parser.add_argument("-x", "--exclude", nargs="+", metavar="ENTITY",
                         help="do not output these entity types (e.g. exon exon_transcript)")
+    parser.add_argument("-b", "--base-uri", metavar="URI", default=Ensembl2turtle.default_base_uri,
+                        help="base of the resource URIs, e.g. http://purl.agrold.org gives "
+                             "http://purl.agrold.org/resource/ensembl/... (default: %(default)s)")
+    parser.add_argument("--terms-uri", metavar="URI", default=Ensembl2turtle.default_terms_uri,
+                        help="namespace of the terms: vocabulary (default: %(default)s)")
     parser.add_argument("--list-entities", action="store_true",
                         help="print the selected entity types and exit (used by convert.sh)")
     args = parser.parse_args()
@@ -661,7 +673,8 @@ def main():
         print(" ".join(entities))
         return
     print(f"Entities: {' '.join(entities)}", file=sys.stderr)
-    converter = Ensembl2turtle(args.dbinfo, entities)
+    print(f"Base URI: {args.base_uri}", file=sys.stderr)
+    converter = Ensembl2turtle(args.dbinfo, entities, args.base_uri, args.terms_uri)
     converter.output_turtle()
 
 

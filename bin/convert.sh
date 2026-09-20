@@ -8,7 +8,7 @@ SPLIT_THRESHOLD=20000000
 
 usage() {
     cat >&2 <<EOT
-Usage: $0 [-s SPECIES ...] [-f CONFIG_YAML] [-e ENTITY ...] [-x ENTITY ...] [dir ...]
+Usage: $0 [-s SPECIES ...] [-f CONFIG_YAML] [-e ENTITY ...] [-x ENTITY ...] [-b BASE_URI] [dir ...]
 Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
 <species>_core_* directories of the current directory.
   -s SPECIES  production name (e.g. arabidopsis_thaliana); may be repeated
@@ -16,6 +16,9 @@ Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
   -e ENTITY   only output this entity type; may be repeated (default: all of
               gene transcript translation exon exon_transcript xref)
   -x ENTITY   do not output this entity type; may be repeated
+  -b URI      base of the resource URIs (default: http://rdf.ebi.ac.uk, e.g.
+              -b http://purl.agrold.org gives http://purl.agrold.org/resource/ensembl/...)
+  -t URI      namespace of the terms: vocabulary (default: http://rdf.ebi.ac.uk/terms/ensembl/)
   dir         core database directory (as downloaded by download_files.py)
 EOT
     exit 1
@@ -25,12 +28,16 @@ species=()
 species_file=""
 entities=()
 exclude=()
-while getopts "s:f:e:x:h" opt; do
+base_uri=""
+terms_uri=""
+while getopts "s:f:e:x:b:t:h" opt; do
     case $opt in
         s) species+=("$OPTARG") ;;
         f) species_file=$OPTARG ;;
         e) entities+=("$OPTARG") ;;
         x) exclude+=("$OPTARG") ;;
+        b) base_uri=$OPTARG ;;
+        t) terms_uri=$OPTARG ;;
         *) usage ;;
     esac
 done
@@ -43,14 +50,23 @@ if [ -n "$species_file" ]; then
     done < <(python3 "$SCRIPT_DIR/species_config.py" dirs "$species_file" *_core_*)
     for e in $(python3 "$SCRIPT_DIR/species_config.py" entities "$species_file"); do entities+=("$e"); done
     for e in $(python3 "$SCRIPT_DIR/species_config.py" exclude "$species_file"); do exclude+=("$e"); done
+    # command line options take precedence over the YAML file
+    [ -z "$base_uri" ] && base_uri=$(python3 "$SCRIPT_DIR/species_config.py" base_uri "$species_file")
+    [ -z "$terms_uri" ] && terms_uri=$(python3 "$SCRIPT_DIR/species_config.py" terms_uri "$species_file")
 fi
 
-# Entity selection, passed to the converter and used for the rapper/gzip loop
+# Converter options: entity selection and URIs
+conv_opts=()
+[ -n "$base_uri" ] && conv_opts+=(-b "$base_uri")
+[ -n "$terms_uri" ] && conv_opts+=(--terms-uri "$terms_uri")
+
+# Entity selection, used for the rapper/gzip loop too
 entity_opts=()
 if [ "${#entities[@]}" -gt 0 ]; then entity_opts+=(-e "${entities[@]}"); fi
 if [ "${#exclude[@]}" -gt 0 ]; then entity_opts+=(-x "${exclude[@]}"); fi
 selected=$(python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" --list-entities "$CONFIG_DIR/dbinfo.json" "${entity_opts[@]+"${entity_opts[@]}"}")
 echo "Entities: $selected" >&2
+conv_opts+=("${entity_opts[@]+"${entity_opts[@]}"}")
 for sp in "${species[@]+"${species[@]}"}"; do
     matched=$(ls -d ${sp}_core_* 2>/dev/null || true)
     if [ -z "$matched" ]; then
@@ -124,7 +140,7 @@ for d in "${dirs[@]}"; do
 
     echo "$d" >&2
     cd "$d"
-    python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" "$CONFIG_DIR/dbinfo.json" "${entity_opts[@]+"${entity_opts[@]}"}"
+    python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" "$CONFIG_DIR/dbinfo.json" "${conv_opts[@]+"${conv_opts[@]}"}"
     #echo "Validating turtle files..."
     for f in $selected; do
         if [ -f "$f.ttl" ]; then
