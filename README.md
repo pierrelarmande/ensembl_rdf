@@ -37,7 +37,15 @@ Resource URIs are built on `http://rdf.ebi.ac.uk` by default (`http://rdf.ebi.ac
 ```
 $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -b http://purl.agrold.org
 ```
-gives `http://purl.agrold.org/resource/ensembl/...`. The `terms:` vocabulary (classes and properties defined in [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl)) keeps the `http://rdf.ebi.ac.uk/terms/ensembl/` namespace unless `-t` / `terms_uri` is given; the ontology file must then be republished with the same namespace.
+gives `http://purl.agrold.org/resource/ensembl/...`. The vocabulary of the model itself (classes and properties defined in [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl)) is set by the model profile, or by `-t` / `terms_uri`; the ontology file must then be republished with the same namespace.
+
+### Vocabulary profile
+The classes and properties used for the model are not hard-coded: a profile in [config/models/](config/models/) maps each element to a term, selected with `-m` / `model`.
+```
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -m ensembl   # default, Ensembl RDF as published by the EBI
+$ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -m agrold -b http://purl.agrold.org
+```
+`agrold` names the classes after the feature (`Gene`, `Transcript`, `Protein`, `Exon`) and keeps the Ensembl properties, everything published under `http://purl.agrold.org/vocabulary/`. Pass a YAML file instead of a name to use your own profile.
 
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 

@@ -39,10 +39,13 @@ def load_model(path):
         sys.exit("Error: PyYAML is required to read a model profile (pip install pyyaml)")
     with open(path, "r") as f:
         conf = yaml.safe_load(f) or {}
+    vocabulary = conf.get("vocabulary") or {}
     model = {
         "prefixes": conf.get("prefixes") or {},
         "terms": conf.get("terms") or {},
         "options": conf.get("options") or {},
+        "vocabulary_prefix": vocabulary.get("prefix", "terms"),
+        "vocabulary_uri": vocabulary.get("uri"),
     }
     missing = [k for k in Ensembl2turtle.model_keys if k not in model["terms"]]
     if missing:
@@ -172,14 +175,21 @@ class Ensembl2turtle:
                  model=None):
         self.entities = [e for e in Ensembl2turtle.entities if entities is None or e in entities]
         self.base_uri = (base_uri or Ensembl2turtle.default_base_uri).rstrip("/")
-        self.terms_uri = terms_uri or Ensembl2turtle.default_terms_uri
+        self.terms_uri = terms_uri
         self.resource_uri = self.base_uri + "/resource/ensembl"  # e.g. http://rdf.ebi.ac.uk/resource/ensembl
-        self.model = model or {"prefixes": {}, "terms": {}, "options": {}}
+        self.model = model or {"prefixes": {}, "terms": {}, "options": {},
+                               "vocabulary_prefix": "terms", "vocabulary_uri": None}
         self.t = self.model["terms"]
         self.opt = self.model["options"]
+        # The vocabulary namespace holds the classes and properties of the model
+        # itself (terms: in the Ensembl model). A profile may rename it and move
+        # it; --terms-uri still wins.
+        self.vocabulary_prefix = self.model.get("vocabulary_prefix") or "terms"
+        if self.terms_uri is None:
+            self.terms_uri = self.model.get("vocabulary_uri") or Ensembl2turtle.default_terms_uri
         self.prefixes = Ensembl2turtle.common_prefixes + [
             ['ensg:', '<' + self.resource_uri + '/>'],
-            ['terms:', '<' + self.terms_uri + '>'],
+            [self.vocabulary_prefix + ':', '<' + self.terms_uri + '>'],
             ['ense:', '<' + self.resource_uri + '.exon/>'],
             ['ensp:', '<' + self.resource_uri + '.protein/>'],
             ['enst:', '<' + self.resource_uri + '.transcript/>'],
@@ -209,7 +219,8 @@ class Ensembl2turtle:
                 line = line.rstrip('\n')
                 sep_line = line.split('\t')
                 if sep_line[1] != "":
-                    self.biotype_url_dic[sep_line[0]] = sep_line[1]
+                    self.biotype_url_dic[sep_line[0]] = re.sub(
+                        r"^terms:", self.vocabulary_prefix + ":", sep_line[1])
                 line = input_table.readline()
         return
 
@@ -702,8 +713,9 @@ def main():
     parser.add_argument("-b", "--base-uri", metavar="URI", default=Ensembl2turtle.default_base_uri,
                         help="base of the resource URIs, e.g. http://purl.agrold.org gives "
                              "http://purl.agrold.org/resource/ensembl/... (default: %(default)s)")
-    parser.add_argument("--terms-uri", metavar="URI", default=Ensembl2turtle.default_terms_uri,
-                        help="namespace of the terms: vocabulary (default: %(default)s)")
+    parser.add_argument("-t", "--terms-uri", metavar="URI", default=None,
+                        help="namespace of the model vocabulary, overriding the profile "
+                             "(default: " + Ensembl2turtle.default_terms_uri + ")")
     parser.add_argument("-m", "--model", metavar="NAME_OR_FILE", default="ensembl",
                         help="vocabulary profile: a name in config/models/ (ensembl, agrold) "
                              "or a YAML file (default: %(default)s)")
