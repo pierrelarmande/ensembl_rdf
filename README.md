@@ -47,6 +47,12 @@ $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -m agrold -b http://p
 ```
 `agrold` names the classes after the feature (`Gene`, `Transcript`, `Protein`, `Exon`) and keeps the Ensembl properties, everything published under `http://purl.agrold.org/vocabulary/`. Pass a YAML file instead of a name to use your own profile.
 
+The ontology of a profile is derived from [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl) — renamed terms, profile namespace, and an `owl:equivalentClass` / `owl:equivalentProperty` link back to the Ensembl term each one derives from:
+```
+$ python3 /path/to/ensembl_rdf/bin/make_ontology.py agrold      # -> ontology/agrold_ontology.ttl
+```
+Regenerate it whenever the profile changes, and publish it at the namespace the profile declares.
+
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
 ## RDF schema
