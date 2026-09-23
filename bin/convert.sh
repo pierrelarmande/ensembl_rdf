@@ -8,7 +8,7 @@ SPLIT_THRESHOLD=20000000
 
 usage() {
     cat >&2 <<EOT
-Usage: $0 [-s SPECIES ...] [-f CONFIG_YAML] [-e ENTITY ...] [-x ENTITY ...] [-b BASE_URI] [dir ...]
+Usage: $0 [-s SPECIES ...] [-f CONFIG_YAML] [-e ENTITY ...] [-x ENTITY ...] [-b BASE_URI] [-m MODEL] [dir ...]
 Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
 <species>_core_* directories of the current directory.
   -s SPECIES  production name (e.g. arabidopsis_thaliana); may be repeated
@@ -19,6 +19,8 @@ Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
   -b URI      base of the resource URIs (default: http://rdf.ebi.ac.uk, e.g.
               -b http://purl.agrold.org gives http://purl.agrold.org/resource/ensembl/...)
   -t URI      namespace of the terms: vocabulary (default: http://rdf.ebi.ac.uk/terms/ensembl/)
+  -m MODEL    vocabulary profile: a name in config/models/ (ensembl, agrold) or
+              a YAML file (default: ensembl)
   dir         core database directory (as downloaded by download_files.py)
 EOT
     exit 1
@@ -30,7 +32,8 @@ entities=()
 exclude=()
 base_uri=""
 terms_uri=""
-while getopts "s:f:e:x:b:t:h" opt; do
+model=""
+while getopts "s:f:e:x:b:t:m:h" opt; do
     case $opt in
         s) species+=("$OPTARG") ;;
         f) species_file=$OPTARG ;;
@@ -38,6 +41,7 @@ while getopts "s:f:e:x:b:t:h" opt; do
         x) exclude+=("$OPTARG") ;;
         b) base_uri=$OPTARG ;;
         t) terms_uri=$OPTARG ;;
+        m) model=$OPTARG ;;
         *) usage ;;
     esac
 done
@@ -53,12 +57,14 @@ if [ -n "$species_file" ]; then
     # command line options take precedence over the YAML file
     [ -z "$base_uri" ] && base_uri=$(python3 "$SCRIPT_DIR/species_config.py" base_uri "$species_file")
     [ -z "$terms_uri" ] && terms_uri=$(python3 "$SCRIPT_DIR/species_config.py" terms_uri "$species_file")
+    [ -z "$model" ] && model=$(python3 "$SCRIPT_DIR/species_config.py" model "$species_file")
 fi
 
 # Converter options: entity selection and URIs
 conv_opts=()
 [ -n "$base_uri" ] && conv_opts+=(-b "$base_uri")
 [ -n "$terms_uri" ] && conv_opts+=(--terms-uri "$terms_uri")
+[ -n "$model" ] && conv_opts+=(-m "$model")
 
 # Entity selection, used for the rapper/gzip loop too
 entity_opts=()
