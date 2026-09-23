@@ -7,6 +7,15 @@
 # <IRI>.
 prefixes: {}
 
+# Resource URIs. `{base}` is replaced by --base-uri; `prefix` is the Turtle
+# prefix used for them (omit it to write full IRIs).
+resources:
+  gene:       {prefix: ensg, uri: "{base}/resource/ensembl/"}
+  transcript: {prefix: enst, uri: "{base}/resource/ensembl.transcript/"}
+  protein:    {prefix: ensp, uri: "{base}/resource/ensembl.protein/"}
+  exon:       {prefix: ense, uri: "{base}/resource/ensembl.exon/"}
+  chromosome: {uri: "{base}/resource/ensembl/"}
+
 terms:
   # classes
   gene_class: terms:EnsemblGene

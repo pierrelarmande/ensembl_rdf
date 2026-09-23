@@ -47,6 +47,17 @@ $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -m agrold -b http://p
 ```
 `agrold` names the classes after the feature (`Gene`, `Transcript`, `Protein`, `Exon`) and keeps the Ensembl properties, everything published under `http://purl.agrold.org/vocabulary/`. Pass a YAML file instead of a name to use your own profile.
 
+A profile also sets the URIs of the resources themselves, so they need not mention `ensembl`:
+```yaml
+resources:
+  gene:       {prefix: gene,       uri: "{base}/resource/"}            # gene:AT1G01010
+  transcript: {prefix: transcript, uri: "{base}/resource/transcript/"}
+  protein:    {prefix: protein,    uri: "{base}/resource/protein/"}
+  exon:       {prefix: exon,       uri: "{base}/resource/exon/"}
+  chromosome: {uri: "{base}/resource/chromosome/"}
+```
+`{base}` is replaced by `-b`; `prefix` is the Turtle prefix (omit it to write full IRIs).
+
 The ontology of a profile is derived from [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl) — renamed terms, profile namespace, and an `owl:equivalentClass` / `owl:equivalentProperty` link back to the Ensembl term each one derives from:
 ```
 $ python3 /path/to/ensembl_rdf/bin/make_ontology.py agrold      # -> ontology/agrold_ontology.ttl

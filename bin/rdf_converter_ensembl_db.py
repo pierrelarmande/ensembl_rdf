@@ -40,7 +40,12 @@ def load_model(path):
     with open(path, "r") as f:
         conf = yaml.safe_load(f) or {}
     vocabulary = conf.get("vocabulary") or {}
+    resources = conf.get("resources") or {}
+    missing_res = [k for k in Ensembl2turtle.resource_keys if k not in resources]
+    if missing_res:
+        sys.exit(f"Error: model {path} does not define resources {missing_res}")
     model = {
+        "resources": resources,
         "prefixes": conf.get("prefixes") or {},
         "terms": conf.get("terms") or {},
         "options": conf.get("options") or {},
@@ -157,6 +162,9 @@ class Ensembl2turtle:
     }
     entities = list(entity_tables.keys())
 
+    # URIs of the resources themselves; `uri` may use {base}, set by --base-uri
+    resource_keys = ["gene", "transcript", "protein", "exon", "chromosome"]
+
     # Every element of the model a profile must map (config/models/*.yaml)
     model_keys = [
         "gene_class", "transcript_class", "protein_class", "exon_class",
@@ -176,8 +184,7 @@ class Ensembl2turtle:
         self.entities = [e for e in Ensembl2turtle.entities if entities is None or e in entities]
         self.base_uri = (base_uri or Ensembl2turtle.default_base_uri).rstrip("/")
         self.terms_uri = terms_uri
-        self.resource_uri = self.base_uri + "/resource/ensembl"  # e.g. http://rdf.ebi.ac.uk/resource/ensembl
-        self.model = model or {"prefixes": {}, "terms": {}, "options": {},
+        self.model = model or {"prefixes": {}, "terms": {}, "options": {}, "resources": {},
                                "vocabulary_prefix": "terms", "vocabulary_uri": None}
         self.t = self.model["terms"]
         self.opt = self.model["options"]
@@ -187,12 +194,18 @@ class Ensembl2turtle:
         self.vocabulary_prefix = self.model.get("vocabulary_prefix") or "terms"
         if self.terms_uri is None:
             self.terms_uri = self.model.get("vocabulary_uri") or Ensembl2turtle.default_terms_uri
+        # Resource namespaces: {prefix, uri} per resource type, from the profile
+        self.res = {}
+        for key in Ensembl2turtle.resource_keys:
+            conf = self.model["resources"].get(key) or {}
+            self.res[key] = {
+                "prefix": conf.get("prefix", ""),
+                "uri": conf.get("uri", "{base}/resource/").replace("{base}", self.base_uri),
+            }
         self.prefixes = Ensembl2turtle.common_prefixes + [
-            ['ensg:', '<' + self.resource_uri + '/>'],
             [self.vocabulary_prefix + ':', '<' + self.terms_uri + '>'],
-            ['ense:', '<' + self.resource_uri + '.exon/>'],
-            ['ensp:', '<' + self.resource_uri + '.protein/>'],
-            ['enst:', '<' + self.resource_uri + '.transcript/>'],
+        ] + [[r["prefix"] + ':', '<' + r["uri"] + '>']
+             for key, r in self.res.items() if r["prefix"]
         ] + [[k + ':', '<' + v + '>'] for k, v in self.model["prefixes"].items()]
         self.dbinfo = self.load_dbinfo(input_dbinfo_file)
         self.dbs = self.load_dbs()
@@ -327,7 +340,7 @@ class Ensembl2turtle:
         self.output_file = f
         self.output_prefixes()
         for id in gene:
-            sbj = "ensg:" + escape(gene[id][6])
+            sbj = self.uri("gene", gene[id][6])
             xref_id = gene[id][4]
             seq_region_id = gene[id][7]
 
@@ -376,7 +389,7 @@ class Ensembl2turtle:
         self.output_prefixes()
         for id in transcript:
             stable_id = transcript[id][7]
-            sbj = "enst:" + escape(stable_id)
+            sbj = self.uri("transcript", stable_id)
             xref_id = transcript[id][4]
 
             self.triple(sbj, "a", self.t["transcript_class"])
@@ -387,10 +400,10 @@ class Ensembl2turtle:
                 label = xref[xref_id][2]
             self.triple(sbj, self.t["label"], quote(label))
             self.triple(sbj, self.t["identifier"], quote(stable_id))
-            self.triple(sbj, self.t["transcribed_from"], "ensg:"+escape(gene[transcript[id][0]][6]))
+            self.triple(sbj, self.t["transcribed_from"], self.uri("gene", gene[transcript[id][0]][6]))
             translates_to = transcript[id][6]
             if translates_to != "\\N":
-                self.triple(sbj, self.t["translates_to"], "ensp:"+escape(translation[translates_to][1]))
+                self.triple(sbj, self.t["translates_to"], self.uri("protein", translation[translates_to][1]))
 
             # location
             chromosome_urls = self.seq_region_id_to_chr(transcript[id][8])
@@ -413,7 +426,7 @@ class Ensembl2turtle:
                         attrib_val = re.sub(r" .*", "", attrib[1])
                         if match:
                             comment = match.group(1)
-                            statement = "<" + self.resource_uri + ".transcript/#_" + iri_escape(stable_id) + "-has_transcript_flag-"+attrib_val+">"
+                            statement = "<" + self.res["transcript"]["uri"] + "#_" + iri_escape(stable_id) + "-has_transcript_flag-"+attrib_val+">"
                             self.triple(statement, "a", "rdf:Statement")
                             self.triple(statement, "rdf:subject", sbj)
                             self.triple(statement, "rdf:predicate", self.t["has_transcript_flag"])
@@ -431,7 +444,7 @@ class Ensembl2turtle:
                             ensgloss_term = "ensgloss:ENSGLOSSARY_0000375"
                         version = transcript[id][9]
                         versioned_id = escape(stable_id) + "." + version
-                        versioned_sbj = "enst:" + versioned_id
+                        versioned_sbj = self.uri("transcript", stable_id + "." + version)
                         self.triple(sbj, self.t["has_transcript_flag"], ensgloss_term)
                         self.triple(sbj, self.t["has_versioned_transcript"], versioned_sbj)
                         self.triple(versioned_sbj, "a", self.t["versioned_transcript_class"])
@@ -454,6 +467,13 @@ class Ensembl2turtle:
         self.output_file = sys.stdout
         f.close()
         return
+
+    def uri(self, kind, stable_id):
+        """URI of a resource, as a prefixed name when the profile declares a prefix."""
+        prefix = self.res[kind]["prefix"]
+        if prefix:
+            return prefix + ":" + escape(stable_id)
+        return "<" + self.res[kind]["uri"] + iri_escape(stable_id) + ">"
 
     def output_biotype(self, sbj, biotype):
         """Emit the biotype, as an ontology term or as a literal (see the model profile)."""
@@ -491,10 +511,10 @@ class Ensembl2turtle:
         # e.g. "GRCm38"
         coord_system_version = coord_system[coord_system_id][2]
         # e.g. <http://rdf.ebi.ac.uk/resource/ensembl/109/mus_musculus/GRCm38/Y>
-        chromosome_url = "<"+self.resource_uri+"/"+self.ensembl_version+"/"+production_name+"/"+coord_system_version+"/"+chromosome_name+">"
+        chromosome_url = "<"+self.res["chromosome"]["uri"]+self.ensembl_version+"/"+production_name+"/"+coord_system_version+"/"+chromosome_name+">"
         # For LRG, <http://rdf.ebi.ac.uk/resource/ensembl/109/homo_sapiens/LRG_1>">"
         if coord_system[coord_system_id][1] == "lrg":
-            chromosome_url = "<"+self.resource_uri+"/"+self.ensembl_version+"/"+production_name+"/"+chromosome_name+">"
+            chromosome_url = "<"+self.res["chromosome"]["uri"]+self.ensembl_version+"/"+production_name+"/"+chromosome_name+">"
         chromosome_urls.append(chromosome_url)
 
         if self.seq_region_id_to_taxonomy_id(seq_region_id) == "9606":
@@ -532,11 +552,11 @@ class Ensembl2turtle:
         self.output_file = f
         self.output_prefixes()
         for id in translation:
-            sbj = "ensp:" + escape(translation[id][1])
+            sbj = self.uri("protein", translation[id][1])
 
             self.triple(sbj, "a", self.t["protein_class"])
             self.triple(sbj, self.t["identifier"], quote(translation[id][1]))
-            self.triple(sbj, self.t["translation_of"], "enst:"+escape(transcript[translation[id][0]][7]))
+            self.triple(sbj, self.t["translation_of"], self.uri("transcript", transcript[translation[id][0]][7]))
         self.output_file = sys.stdout
         f.close()
         return
@@ -547,7 +567,7 @@ class Ensembl2turtle:
         self.output_file = f
         self.output_prefixes()
         for id in exon:
-            sbj = "ense:" + escape(exon[id][3])
+            sbj = self.uri("exon", exon[id][3])
 
             self.triple(sbj, "a", self.t["exon_class"])
             self.triple(sbj, "a", self.t["exon_so_class"])
@@ -577,9 +597,9 @@ class Ensembl2turtle:
             exon_stable_id = exon[exon_id][3]
             transcript_stable_id = transcript[transcript_id][7]
             rank = exon_transcript[id][0]
-            ordered_exon_uri = "<"+self.resource_uri+".transcript/"+iri_escape(transcript_stable_id)+"#Exon_"+rank+">"
-            exon_uri = "ense:" + escape(exon_stable_id)
-            transcript_uri = "enst:" + escape(transcript_stable_id)
+            ordered_exon_uri = "<"+self.res["transcript"]["uri"]+iri_escape(transcript_stable_id)+"#Exon_"+rank+">"
+            exon_uri = self.uri("exon", exon_stable_id)
+            transcript_uri = self.uri("transcript", transcript_stable_id)
 
             self.triple(ordered_exon_uri, "a", self.t["ordered_exon_class"])
             self.triple(ordered_exon_uri, "a", self.t["ordered_list_item_class"])
@@ -607,11 +627,11 @@ class Ensembl2turtle:
             subject_id = object_xref[id][0]
             subject_type = object_xref[id][1]
             if subject_type == "Gene":
-                subject_url = "ensg:" + escape(gene[subject_id][6])
+                subject_url = self.uri("gene", gene[subject_id][6])
             elif subject_type == "Transcript":
-                subject_url = "enst:" + escape(transcript[subject_id][7])
+                subject_url = self.uri("transcript", transcript[subject_id][7])
             elif subject_type == "Translation":
-                subject_url = "ensp:" + escape(translation[subject_id][1])
+                subject_url = self.uri("protein", translation[subject_id][1])
             else:
                 continue
             # xref_node = Bnode()
@@ -707,9 +727,11 @@ def main():
                     "(one per entity type: " + ", ".join(Ensembl2turtle.entities) + ").")
     parser.add_argument("dbinfo", help="config/dbinfo.json")
     parser.add_argument("-e", "--entities", nargs="+", metavar="ENTITY",
-                        help="only output these entity types (default: all)")
+                        action="extend", default=[],
+                        help="only output these entity types (default: all); repeatable")
     parser.add_argument("-x", "--exclude", nargs="+", metavar="ENTITY",
-                        help="do not output these entity types (e.g. exon exon_transcript)")
+                        action="extend", default=[],
+                        help="do not output these entity types (e.g. -x exon); repeatable")
     parser.add_argument("-b", "--base-uri", metavar="URI", default=Ensembl2turtle.default_base_uri,
                         help="base of the resource URIs, e.g. http://purl.agrold.org gives "
                              "http://purl.agrold.org/resource/ensembl/... (default: %(default)s)")

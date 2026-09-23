@@ -13,6 +13,15 @@ vocabulary:
   prefix: agrold_vocabulary
   uri: http://purl.agrold.org/vocabulary/
 
+# Resource URIs, without `ensembl` in the path. `{base}` is replaced by
+# --base-uri, so these read http://purl.agrold.org/resource/...
+resources:
+  gene:       {prefix: gene,       uri: "{base}/resource/"}
+  transcript: {prefix: transcript, uri: "{base}/resource/transcript/"}
+  protein:    {prefix: protein,    uri: "{base}/resource/protein/"}
+  exon:       {prefix: exon,       uri: "{base}/resource/exon/"}
+  chromosome: {uri: "{base}/resource/chromosome/"}
+
 terms:
   # classes: AgroLD vocabulary, named after the feature
   gene_class: agrold_vocabulary:Gene
