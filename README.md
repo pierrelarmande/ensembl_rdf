@@ -66,6 +66,9 @@ Regenerate it whenever the profile changes, and publish it at the namespace the 
 
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
+### Species of a division
+[config/species_agrold.yaml](config/species_agrold.yaml) lists the 51 plant species of AgroLD, matched to Ensembl Plants by NCBI taxon ID against [config/species_EnsemblPlants_63.txt](config/species_EnsemblPlants_63.txt) (the release's own species table, `species_EnsemblPlants.txt` on the FTP). Where several genomes share a taxon ID — 18 bread wheat cultivars, 7 barleys, 10 indica rices — the reference genome is listed; matching is anchored on `<name>_core_`, so `triticum_aestivum` does not pull in `triticum_aestivum_cadenza`.
+
 ## Cross-reference sources
 Cross-references are turned into `rdfs:seeAlso` links using [config/external_db_url.tsv](config/external_db_url.tsv): one line per `external_db_id` (numeric, not the name), giving the URL the accession is appended to and, optionally, a prefix to strip from it. Sources with no URL are reported in `xref_report.tsv` next to each converted database, and no link is emitted for them.
 
