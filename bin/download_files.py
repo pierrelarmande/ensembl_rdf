@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import datetime
 import argparse
 from ftplib import FTP
@@ -18,6 +19,24 @@ CONFIG_DIR = os.path.dirname(os.path.abspath(__file__)) + "/../config/"
 def log(msg):
     dt_now = datetime.datetime.now()
     print(f'[{dt_now}] {msg}', file=sys.stderr)
+
+
+def retry(what, call, attempts=5, delay=10):
+    """Run `call`, retrying on network errors with a growing delay.
+
+    Long unattended runs hit transient failures (the server closing the
+    connection, a timeout); one failure should not lose a whole job.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return call()
+        except Exception as e:
+            if attempt == attempts:
+                raise
+            wait = delay * attempt
+            log(f'Warning: {what} failed ({type(e).__name__}: {e}); '
+                f'retry {attempt}/{attempts - 1} in {wait}s')
+            time.sleep(wait)
 
 
 class LinkParser(HTMLParser):
@@ -62,12 +81,21 @@ class HttpSource:
 
 class FtpSource:
     def __init__(self, host, base_dir):
-        self.ftp = FTP(host)
-        self.ftp.login()
+        self.host = host
         self.base_dir = base_dir
+        self.connect()
+
+    def connect(self):
+        self.ftp = FTP(self.host)
+        self.ftp.login()
 
     def list(self, path=""):
-        return self.ftp.nlst(self.base_dir + "/" + path) if path else self.ftp.nlst(self.base_dir)
+        target = self.base_dir + "/" + path if path else self.base_dir
+        try:
+            return self.ftp.nlst(target)
+        except Exception:
+            self.connect()  # the control connection may have timed out
+            return self.ftp.nlst(target)
 
     def fetch(self, path, dest):
         with open(dest, 'wb') as f:
@@ -91,16 +119,21 @@ def make_source(args):
 
 
 def download_files(source, directory, dbs):
-    files = [os.path.basename(f) for f in source.list(directory)]
+    files = [os.path.basename(f) for f in retry(f'listing {directory}',
+                                                lambda: source.list(directory))]
     os.makedirs(directory, exist_ok=True)
     for file in files:
         if file in dbs:
-            log(f'Downloading: {directory}/{file}')
-            source.fetch(directory + "/" + file, directory + "/" + file)
+            path = directory + "/" + file
+            log(f'Downloading: {path}')
+            retry(f'downloading {path}',
+                  lambda: source.fetch(path, path + ".part"))
+            os.replace(path + ".part", path)
 
 
 def process_directory(source, dbs, species_patterns):
-    subdirectories = [os.path.basename(d) for d in source.list()]
+    subdirectories = [os.path.basename(d) for d in retry('listing the release',
+                                                         lambda: source.list())]
     found = False
     for subdirectory in subdirectories:
         if not match_core_dir(species_patterns, subdirectory):

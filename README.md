@@ -69,6 +69,17 @@ Regenerate it whenever the profile changes, and publish it at the namespace the 
 ### Species of a division
 [config/species_agrold.yaml](config/species_agrold.yaml) lists the 51 plant species of AgroLD, matched to Ensembl Plants by NCBI taxon ID against [config/species_EnsemblPlants_63.txt](config/species_EnsemblPlants_63.txt) (the release's own species table, `species_EnsemblPlants.txt` on the FTP). Where several genomes share a taxon ID — 18 bread wheat cultivars, 7 barleys, 10 indica rices — the reference genome is listed; matching is anchored on `<name>_core_`, so `triticum_aestivum` does not pull in `triticum_aestivum_cadenza`.
 
+## Running on a cluster
+[bin/convert_slurm.sh](bin/convert_slurm.sh) converts one species per array task — download, conversion, `rapper` and `gzip`:
+```
+$ mkdir -p logs
+$ sbatch --array=1-$(python3 bin/species_config.py species config/species_agrold.yaml | wc -l) \
+         bin/convert_slurm.sh config/species_agrold.yaml /path/to/workdir
+```
+Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. Edit the `#SBATCH` header and the commented `module load` / `conda activate` lines for your site.
+
+Sizing, measured on Ensembl Plants 63: the 51 species of `species_agrold.yaml` amount to 1.3 GB of compressed dumps. The converter loads the tables it needs in RAM, roughly 35-40x their compressed size (Arabidopsis: 44 MB of dumps, 1.6 GB of RAM, 39 s, 560 MB of Turtle before `rapper` and `gzip`, 28 MB after); 16 GB per task covers every plant species, bread wheat included.
+
 ## Cross-reference sources
 Cross-references are turned into `rdfs:seeAlso` links using [config/external_db_url.tsv](config/external_db_url.tsv): one line per `external_db_id` (numeric, not the name), giving the URL the accession is appended to and, optionally, a prefix to strip from it. Sources with no URL are reported in `xref_report.tsv` next to each converted database, and no link is emitted for them.
 
