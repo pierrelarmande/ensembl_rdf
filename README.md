@@ -66,5 +66,17 @@ Regenerate it whenever the profile changes, and publish it at the namespace the 
 
 `convert.sh` requires [rapper](https://librdf.org/raptor/rapper.html) (Raptor RDF Syntax Library) to normalize the Turtle files.
 
+## Cross-reference sources
+Cross-references are turned into `rdfs:seeAlso` links using [config/external_db_url.tsv](config/external_db_url.tsv): one line per `external_db_id` (numeric, not the name), giving the URL the accession is appended to and, optionally, a prefix to strip from it. Sources with no URL are reported in `xref_report.tsv` next to each converted database, and no link is emitted for them.
+
+Before converting a whole division, survey which sources its species actually use — it only needs `xref.txt.gz` and `external_db.txt.gz`:
+```
+$ python3 /path/to/ensembl_rdf/bin/download_files.py URL --dbinfo /path/to/ensembl_rdf/config/xref_dbinfo.json
+$ python3 /path/to/ensembl_rdf/bin/xref_survey.py                  # every *_core_* of the cwd
+$ python3 /path/to/ensembl_rdf/bin/xref_survey.py --missing-only   # only the sources with no URL
+$ python3 /path/to/ensembl_rdf/bin/xref_survey.py --missing-only --tsv   # ids to append to the table
+```
+The report gives, per source, the number of species using it, the number of xrefs, an example accession and its current URL, so the sources worth mapping come first. Ids already listed with an empty URL are filled in place; ids the table does not know are printed by `--tsv`, ready to append.
+
 ## RDF schema
 [RDF-config](https://github.com/dbcls/rdf-config/blob/master/config/ensembl/model.yaml)
