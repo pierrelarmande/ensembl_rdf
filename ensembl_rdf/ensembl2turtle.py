@@ -2,15 +2,17 @@ import os
 import sys
 import json
 import gzip
-import psutil
-from utils import log_time
+from utils import log_time, memory_usage_mb
 
 class Ensembl2turtle:
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
-    def __init__(self, input_dbinfo_file, input_data_dir):
+    def __init__(self, input_dbinfo_file, input_data_dir, needed_tables=None):
         self.input_data_dir = input_data_dir
         self.dbinfo = self.load_dbinfo(input_dbinfo_file)
+        # Tables to read; the rest of dbinfo is left alone, which keeps a
+        # conversion of part of the model out of the memory the whole one needs.
+        self.needed_tables = needed_tables
         self.dbs = self.load_dbs()
         self.output_file = sys.stdout
         self.prefixes = [
@@ -49,7 +51,7 @@ class Ensembl2turtle:
             while (line):
                 line = line.rstrip("\n")
                 sep_line = line.split("\t")
-                # gene_attrib の sep_line: [gene_id, attrib_type_id, value]
+                # e.g. transcript_attrib: [transcript_id, attrib_type_id, value]
                 key_list = [sep_line[i] for i in key_indices]
                 if len(key_list) >= 2:
                     key = tuple(key_list)
@@ -71,10 +73,12 @@ class Ensembl2turtle:
     def load_dbs(self):
         db_dics = {}
         for db in self.dbinfo:
+            if self.needed_tables is not None and db not in self.needed_tables:
+                continue
             db_dics[db] = self.load_db(db)
-            process = psutil.Process()
-            memory_usage = process.memory_info().rss  # バイト単位でのメモリ使用量
-            print(f"memory: {memory_usage / (1024*1024)} MB", file=sys.stderr)
+            memory = memory_usage_mb()
+            if memory is not None:
+                print(f"memory: {memory:.1f} MB", file=sys.stderr)
 
         return db_dics
 

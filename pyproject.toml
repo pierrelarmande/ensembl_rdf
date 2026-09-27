@@ -1,0 +1,17 @@
+# Dependency and project metadata only.
+#
+# This is not an installable package: the converter is a set of scripts in bin/
+# that read config/, ontology/ and each other by path, and convert.sh drives
+# rapper. `pip install .` would leave all of that behind, so run the scripts
+# from a checkout (see README.md) and install the dependencies with
+# `pip install -r requirements.txt`.
+[project]
+name = "ensembl-rdf"
+version = "0.2.0"
+description = "Convert Ensembl core databases to RDF, with a configurable vocabulary"
+requires-python = ">=3.8"
+dependencies = ["PyYAML>=5.1"]
+
+[project.optional-dependencies]
+# Reports resident memory as the tables load; the converter works without it
+memory = ["psutil>=5.0"]

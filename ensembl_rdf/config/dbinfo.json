@@ -13,15 +13,6 @@
       {"index": 3, "name": "seq_region_id"}
     ]
   },
-  "gene_attrib": {
-    "filename": "gene_attrib.txt.gz",
-    "key_indices": [0],
-    "list": true,
-    "values": [
-      {"index": 1, "name": "attrib_type_id"},
-      {"index": 2, "name": "value"}
-    ]
-  },
   "attrib_type": {
     "filename": "attrib_type.txt.gz",
     "key_indices": [0],
