@@ -64,6 +64,10 @@ terms:
   has_counterpart: agrold_vocabulary:has_counterpart
 
 options:
+  # The biotype stays an ontology term (ENSGLOSSARY, SO or the vocabulary's own
+  # class), as the Ensembl model recommends, both as rdf:type and as object of
+  # has_biotype — which agrold_schema.owl therefore declares as an
+  # owl:ObjectProperty, unlike the other AgroLD parsers that write a string.
   # Regions keyed by taxon and assembly, as in the AgroLD graph
   chromosome_pattern: "{taxon}/{assembly}/{chromosome}"
   chromosome_lrg_pattern: "{taxon}/{chromosome}"
