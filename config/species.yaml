@@ -6,7 +6,7 @@
 #      (e.g. arabidopsis_thaliana for arabidopsis_thaliana_core_63_116_11).
 #      A regular expression is accepted too (e.g. oryza_.* for every rice).
 # entities: entity types to output (convert.sh only). Optional; default: all of
-#      gene, transcript, translation, exon, exon_transcript, xref.
+#      gene, transcript, translation, exon, exon_transcript, xref, chromosome.
 # exclude: entity types not to output. Optional.
 # base_uri: base of the resource URIs (convert.sh only). Optional; default
 #      http://rdf.ebi.ac.uk, giving http://rdf.ebi.ac.uk/resource/ensembl/...
