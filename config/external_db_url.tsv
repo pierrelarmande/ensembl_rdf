@@ -234,13 +234,13 @@
 50005	http://identifiers.org/ec-code/	
 50010		
 50035		
-50040		
+50040	https://identifiers.org/ena.embl/	
 50050		
 50090		
 50110		
-50120		
+50120	https://identifiers.org/rapdb.locus/	
 50140		
-50160		
+50160	https://identifiers.org/tair.name/	
 50170		
 50180		
 50185		
@@ -327,7 +327,7 @@
 50711		
 50713		
 50715		
-50717		
+50717	https://www.ebi.ac.uk/QuickGO/annotations?geneProductId=	
 50718		
 50719		
 50720		
@@ -341,11 +341,11 @@
 50731		
 50732		
 50733		
-50734		
+50734	https://identifiers.org/tair.name/	
 50735		
 50736		
 50737		
-50738		
+50738	https://metacyc.org/META/NEW-IMAGE?type=PATHWAY&object=	
 50739		
 50740		
 50742	http://identifiers.org/pmc/	
@@ -360,7 +360,7 @@
 50752	http://identifiers.org/pride/	
 50753		
 50755	http://identifiers.org/bindingdb/	
-50756		
+50756	https://string-db.org/network/	
 50757	http://identifiers.org/unipathway.reaction/	
 50759	http://identifiers.org/swiss-model/	
 50762		
@@ -389,7 +389,7 @@
 50797		
 50798		
 50799		
-50801		
+50801	https://www.kegg.jp/kegg-bin/show_pathway?ec	
 50802		
 50803		
 50808	http://identifiers.org/doi/	
@@ -418,7 +418,7 @@
 50836	http://identifiers.org/ensembl.protist/	
 50837		
 50838		
-50839		
+50839	https://identifiers.org/ncbigene/	
 50840	http://identifiers.org/refseq/	
 50841		
 50842	http://identifiers.org/ensembl.plants/	
@@ -426,8 +426,8 @@
 50845		
 50846		
 50847	http://identifiers.org/pubmed/	
-50848		
-50849		
+50848	https://plantreactome.gramene.org/content/detail/	
+50849	https://plantreactome.gramene.org/content/detail/	
 50850		
 50851	http://identifiers.org/oryzabase.gene/	
 50852	http://identifiers.org/rapdb.transcript/	
