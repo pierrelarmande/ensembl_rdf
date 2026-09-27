@@ -231,6 +231,8 @@ class Ensembl2turtle:
         self.init_biotype_url_dic()
         # Regions the converted features sit on; `chromosome` describes those
         self.referenced_seq_regions = set()
+        self.statement_count = 0
+        self.statements_per_file = {}
 
     def init_biotype_url_dic(self):
         biotype_url_dic_tsv = "ontology/biotype_url.tsv"
@@ -262,6 +264,7 @@ class Ensembl2turtle:
 
     def triple(self, s, p, o):
         print(s, p, o, ".", file=self.output_file)
+        self.statement_count += 1
         return
 
     def get_ensembl_version(self):
@@ -730,6 +733,7 @@ class Ensembl2turtle:
     def output_prefixes(self):
         for prefix in self.prefixes:
             self.triple("@prefix", prefix[0], prefix[1])
+        self.statement_count -= len(self.prefixes)  # header lines, not statements
         return
 
     def output_turtle(self):
@@ -745,13 +749,33 @@ class Ensembl2turtle:
         for entity in self.entities:
             dt_now = datetime.datetime.now()
             print(f"[{dt_now}] Output turtle: {entity}", file=sys.stderr)
+            before = self.statement_count
             rdfizers[entity]()
+            self.statements_per_file[entity + ".ttl"] = self.statement_count - before
 
         if "xref" in self.entities:
             self.output_xref_report()
 
+        self.output_conversion_report()
         dt_now = datetime.datetime.now()
         print(f"[{dt_now}] Done.", file=sys.stderr)
+
+    def output_conversion_report(self):
+        """Describe this conversion for the run manifest (see bin/run.py)."""
+        report = {
+            "species": sorted(self.species_id2production_name.values()),
+            "taxonomy_ids": sorted(self.species_id2taxonomy_id.values()),
+            "ensembl_version": self.ensembl_version,
+            "base_uri": self.base_uri,
+            "vocabulary_uri": self.terms_uri,
+            "entities": self.entities,
+            # Statements written per file. A statement may carry several objects
+            # (`skos:altLabel "a", "b"`), so rapper counts more triples than this.
+            "statements": self.statements_per_file,
+            "converted_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        }
+        with open("conversion.json", "w") as f:
+            json.dump(report, f, indent=2, sort_keys=True)
 
     def output_xref_report(self):
         with open("xref_report.tsv", "w") as f:

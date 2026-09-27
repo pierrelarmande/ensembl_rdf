@@ -78,6 +78,24 @@ Regenerate it whenever the profile changes, and publish it at the namespace the 
 ### Species of a division
 [config/species_agrold.yaml](config/species_agrold.yaml) lists the 51 plant species of AgroLD, matched to Ensembl Plants by NCBI taxon ID against [config/species_EnsemblPlants_63.txt](config/species_EnsemblPlants_63.txt) (the release's own species table, `species_EnsemblPlants.txt` on the FTP). Where several genomes share a taxon ID — 18 bread wheat cultivars, 7 barleys, 10 indica rices — the reference genome is listed; matching is anchored on `<name>_core_`, so `triticum_aestivum` does not pull in `triticum_aestivum_cadenza`.
 
+## Running a whole configuration
+[bin/run.py](bin/run.py) is the single entry point a pipeline calls: it downloads, converts, checks with `rapper`, gzips and writes a manifest.
+```
+$ python3 /path/to/ensembl_rdf/bin/run.py config/species_agrold.yaml -o /path/to/workdir
+```
+A species already converted is skipped, so an interrupted run resumes where it stopped (`--force` converts it again). `-s` restricts the run to some species of the config, `-j` converts several at once (each needs up to 4 GB), `--skip-download` reuses the tables already there, `--dry-run` reports what would be done. The exit status is 0 only when every species succeeded; failures are named in the summary and in the manifest, and the run carries on unless `--stop-on-error` is given.
+
+`manifest.json`, written next to the species directories, says what was produced — the converter's version, the configuration, and for each species its taxon, the core database, the files with their size and triple count:
+```json
+{"tool": {"name": "ensembl_rdf", "version": "c701207"},
+ "config": {"model": "agrold", "base_uri": "http://purl.agrold.org"},
+ "totals": {"species": 51, "done": 51, "failed": 0, "triples": 15504957},
+ "species": [{"species": "arabidopsis_thaliana", "status": "done",
+              "taxonomy_ids": ["3702"], "ensembl_version": "116",
+              "files": [{"file": "gene.ttl.gz", "bytes": 2786829, "triples": 721019}]}]}
+```
+Triple counts come from `rapper`, which already parses every file, so they cost nothing. `statements_written` counts the statements the converter wrote, which is lower: one statement may carry several objects (`skos:altLabel "a", "b"`).
+
 ## Running on a cluster
 [bin/convert_slurm.sh](bin/convert_slurm.sh) converts one species per array task — download, conversion, `rapper` and `gzip`:
 ```

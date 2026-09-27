@@ -167,7 +167,9 @@ def main():
     species = list(args.species)
     if args.species_file:
         url, file_species = load_species_file(args.species_file)
-        species += file_species
+        # -s selects the species; the file then only supplies the URL
+        if not species:
+            species = file_species
         if not args.url:
             args.url = url
     if not args.url:

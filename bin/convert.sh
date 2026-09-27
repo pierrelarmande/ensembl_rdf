@@ -49,9 +49,12 @@ shift $((OPTIND - 1))
 
 dirs=("$@")
 if [ -n "$species_file" ]; then
-    while IFS= read -r d; do
-        dirs+=("$d")
-    done < <(python3 "$SCRIPT_DIR/species_config.py" dirs "$species_file" *_core_*)
+    # -s (or directories) selects the species; the file then only supplies options
+    if [ "${#species[@]}" -eq 0 ] && [ "${#dirs[@]}" -eq 0 ]; then
+        while IFS= read -r d; do
+            dirs+=("$d")
+        done < <(python3 "$SCRIPT_DIR/species_config.py" dirs "$species_file" *_core_*)
+    fi
     for e in $(python3 "$SCRIPT_DIR/species_config.py" entities "$species_file"); do entities+=("$e"); done
     for e in $(python3 "$SCRIPT_DIR/species_config.py" exclude "$species_file"); do exclude+=("$e"); done
     # command line options take precedence over the YAML file
@@ -86,6 +89,15 @@ if [ "${#dirs[@]}" -eq 0 ]; then
     usage
 fi
 
+# Record how many triples rapper parsed, for the run manifest (bin/run.py)
+record_triples() {
+    local file=$1 stderr=$2
+    local n
+    n=$(grep -oE 'Parsing returned [0-9]+ triples' "$stderr" | grep -oE '[0-9]+' \
+        | awk '{s+=$1} END{print s+0}')
+    printf '%s\t%s\n' "$file" "$n" >> triple_counts.tsv
+}
+
 # Turtle ファイルを分割して rapper で処理する関数
 process_turtle_file() {
     local file=$1
@@ -116,7 +128,9 @@ process_turtle_file() {
 
             # プレフィックスをチャンクの先頭に追加して rapper で処理
             cat "${tmp_dir}/prefixes.ttl" "$chunk" > "${chunk}.with_prefix"
-            rapper -i turtle -o turtle "${chunk}.with_prefix" > "${chunk}.processed"
+            rapper -i turtle -o turtle "${chunk}.with_prefix" 2> "${chunk}.log" > "${chunk}.processed"
+            cat "${chunk}.log" >> "${tmp_dir}/rapper.log"
+            cat "${chunk}.log" >&2
 
             # プレフィックス部分を除去して結合（最初のチャンクを除く）
             if [ "$chunk" = "$tmp_dir/chunk_aa" ]; then
@@ -128,13 +142,17 @@ process_turtle_file() {
 
         # 元のファイルを置き換え
         mv "${file}.processed" "$file"
+        record_triples "$file" "${tmp_dir}/rapper.log"
 
         # 一時ディレクトリを削除
         rm -rf "$tmp_dir"
     else
         # サイズが閾値以下なら通常処理
-        rapper -i turtle -o turtle "$file" > "${file}.rapper.ttl"
+        rapper -i turtle -o turtle "$file" 2> "${file}.rapper.log" > "${file}.rapper.ttl"
+        cat "${file}.rapper.log" >&2
         mv "${file}.rapper.ttl" "$file"
+        record_triples "$file" "${file}.rapper.log"
+        rm -f "${file}.rapper.log"
     fi
 }
 
@@ -146,6 +164,7 @@ for d in "${dirs[@]}"; do
 
     echo "$d" >&2
     cd "$d"
+    : > triple_counts.tsv
     python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" "$CONFIG_DIR/dbinfo.json" "${conv_opts[@]+"${conv_opts[@]}"}"
     #echo "Validating turtle files..."
     for f in $selected; do
