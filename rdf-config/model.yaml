@@ -45,7 +45,7 @@
             - faldo:ReverseStrandPosition
           - faldo:position:
             - ensg_end: 100639991
-  # gene_attrib.select(value WHERE (gene_id=gene.gene_id, attrib_type_id=attrib_type.select(attrib_type_id WHERE(code="synonym"))))
+  # external_synonym.select(synonym WHERE (xref_id=gene.display_xref_id))
   - skos:altLabel*:
     - ensg_altlabel: "TM4SF6"
   # object_xref

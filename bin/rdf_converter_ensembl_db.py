@@ -339,7 +339,7 @@ class Ensembl2turtle:
             while (line):
                 line = line.rstrip('\n')
                 sep_line = line.split('\t')
-                # gene_attrib の sep_line: [gene_id, attrib_type_id, value]
+                # e.g. transcript_attrib: [transcript_id, attrib_type_id, value]
                 key_list = [sep_line[i] for i in key_indices]
                 if len(key_list) >= 2:
                     key = tuple(key_list)
