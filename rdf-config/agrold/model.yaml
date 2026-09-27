@@ -1,0 +1,179 @@
+## The same model as ../model.yaml, as the `agrold` vocabulary profile emits it
+## (config/models/agrold.yaml): classes named after the feature in the AgroLD
+## vocabulary, Ensembl properties, resource URIs under purl.agrold.org without
+## `ensembl` in the path, and regions as named resources rather than blank
+## nodes. Examples are taken from Arabidopsis thaliana (TAIR10, taxon 3702).
+
+## gene.ttl
+- Gene gene:AT1G01010:
+  - a: agrold_vocabulary:Gene
+  # gene.biotype
+  ## Biotypes are set as objects of both rdf:type and has_biotype; a biotype
+  ## with no Ensembl glossary term gets the vocabulary's own class instead,
+  ## e.g. agrold_vocabulary:Nontranslating_CDS.
+  - agrold_vocabulary:has_biotype:
+    - gene_biotype: ensgloss:ENSGLOSSARY_0000026  # protein coding
+  # xref.select(display_label WHERE (xref_id=gene.display_xref_id))
+  - rdfs:label:
+    - gene_label: "NAC001"
+  # gene.description
+  - dcterms:description:
+    - gene_description: "NAC domain containing protein 1 [Source:NCBI gene;Acc:839580]"
+  # gene.stable_id
+  - dcterms:identifier:
+    - gene_id: "AT1G01010"
+  # meta.select(meta_value WHERE (meta_key=species.taxonomy_id))
+  - obo:RO_0002162:
+    - gene_taxonomy: taxonomy:3702
+  ## chromosome.ttl
+  - so:part_of+:
+    - gene_chromosome: Chromosome
+  # gene.select(seq_region_start, seq_region_end, seq_region_strand)
+  - faldo:location:
+    - gene_location: Region
+  # external_synonym.select(synonym WHERE (xref_id=gene.display_xref_id))
+  - skos:altLabel*:
+    - gene_altlabel: "ANAC001"
+  # object_xref
+  ## xref.ttl
+  - gene_xref_link rdfs:seeAlso*:
+    - gene_xref: <https://identifiers.org/tair.name/AT1G01010>
+
+## Regions and positions are named resources, shared by the features that have
+## the same coordinates: <chromosome>:<begin>-<end>:<strand>
+- Region <http://purl.agrold.org/resource/chromosome/3702/TAIR10/1:3631-5899:1>:
+  - a: faldo:Region
+  - faldo:begin:
+    - region_begin: ExactPosition
+  - faldo:end:
+    - region_end: ExactPosition
+
+- ExactPosition <http://purl.agrold.org/resource/chromosome/3702/TAIR10/1:3631:1>:
+  - a:
+    # always an ExactPosition
+    - faldo:ExactPosition
+    # whether Forward or Reverse is variable
+    - faldo:ForwardStrandPosition
+    - faldo:ReverseStrandPosition
+  - faldo:position:
+    - position_value: 3631
+  - faldo:reference:
+    - position_reference: Chromosome
+
+## transcript.ttl
+- Transcript transcript:AT1G01010.1:
+  - a: agrold_vocabulary:Transcript
+  # transcript.biotype
+  - agrold_vocabulary:has_biotype:
+    - transcript_biotype: ensgloss:ENSGLOSSARY_0000026
+  - rdfs:label:
+    - transcript_label: "NAC001-201"
+  # transcript.stable_id
+  - dcterms:identifier:
+    - transcript_id: "AT1G01010.1"
+  # transcript.gene_id
+  - so:transcribed_from:
+    - transcript_transcribed_from: Gene
+  # transcript.canonical_translation_id
+  - so:translates_to?:
+    - transcript_translates_to: Protein
+  # flag
+  ## https://asia.ensembl.org/info/genome/genebuild/transcript_quality_tags.html
+  - agrold_vocabulary:has_transcript_flag*:
+    - transcript_flag: ensgloss:ENSGLOSSARY_0000023  # Ensembl canonical
+  # transcript.select(seq_region_start, seq_region_end, seq_region_strand)
+  - faldo:location:
+    - transcript_location: Region
+  ## exon_transcript.ttl
+  - so:has_part+:
+    - transcript_has_exon: Exon
+  ## exon_transcript.ttl
+  - sio:SIO_000974+:
+    - transcript_has_ordered_exon: OrderedExon
+  ## Only for the MANE transcripts (human), which also get a versioned counterpart
+  - agrold_vocabulary:has_versioned_transcript?:
+    - transcript_versioned: VersionedTranscript
+  # object_xref
+  ## xref.ttl
+  - transcript_xref_link rdfs:seeAlso*:
+    - transcript_xref: refseq:NM_099983
+
+- VersionedTranscript transcript:ENST00000207457.9:
+  - a: agrold_vocabulary:VersionedTranscript
+  # transcript.version
+  - agrold_vocabulary:has_version:
+    - versioned_transcript_version: 9
+  - dcterms:identifier:
+    - versioned_transcript_id: "ENST00000207457.9"
+  - agrold_vocabulary:has_transcript_flag:
+    - versioned_transcript_flag: ensgloss:ENSGLOSSARY_0000365  # MANE Select
+  - agrold_vocabulary:has_counterpart:
+    - versioned_transcript_counterpart: refseq:NM_014466.5
+
+## A transcript flag carrying a comment is reified
+- TranscriptFlagComment <http://purl.agrold.org/resource/transcript/#_ENST00000207457-has_transcript_flag-tsl1>:
+  - a: rdf:Statement
+  - rdf:subject:
+    - flag_comment_subject: Transcript
+  - rdf:predicate:
+    - flag_comment_predicate: agrold_vocabulary:has_transcript_flag
+  - rdf:object:
+    - flag_comment_object: ensgloss:ENSGLOSSARY_0000006
+  - rdfs:comment:
+    - flag_comment: "assigned to previous version 7"
+
+## exon.ttl
+- Exon exon:AT1G01010.1.exon1:
+  - a: agrold_vocabulary:Exon
+  - a: obo:SO_0000147   # exon
+  # exon.stable_id
+  - dcterms:identifier:
+    - exon_id: "AT1G01010.1.exon1"
+  # exon.select(seq_region_start, seq_region_end, seq_region_strand)
+  - faldo:location:
+    - exon_location: Region
+
+## exon_transcript.ttl
+- OrderedExon <http://purl.agrold.org/resource/transcript/AT1G01010.1#Exon_1>:
+  - a: agrold_vocabulary:OrderedExon
+  - a: sio:SIO_001261 # ordered list item
+  - sio:SIO_000628: # refers to
+    - ordered_exon_refers_to: Exon
+  # exon_transcript.select(rank WHERE (transcript_id=transcript.transcript_id))
+  - sio:SIO_000300: # has value
+    - ordered_exon_index: 1
+
+## translation.ttl
+- Protein protein:AT1G01010.1:
+  - a: agrold_vocabulary:Protein
+  # translation.stable_id
+  - dcterms:identifier:
+    - protein_id: "AT1G01010.1"
+  # transcript.select(stable_id WHERE (transcript_id=translation.transcript_id))
+  - so:translation_of:
+    - protein_translation_of: Transcript
+  # object_xref
+  ## xref.ttl
+  - protein_xref_link rdfs:seeAlso*:
+    - protein_xref: uniprot:Q0WV96
+
+## chromosome.ttl
+## The regions the other entities sit on: only those actually referenced, so the
+## contigs and scaffolds of a seq_region table are left out.
+- Chromosome <http://purl.agrold.org/resource/chromosome/3702/TAIR10/1>:
+  - a: agrold_vocabulary:Chromosome
+  - a: obo:SO_0000340   # chromosome; only for a chromosome coordinate system
+  # seq_region.name
+  - rdfs:label:
+    - chromosome_label: "1"
+  - dcterms:identifier:
+    - chromosome_id: "1"
+  # meta.select(meta_value WHERE (meta_key=species.taxonomy_id))
+  - obo:RO_0002162:
+    - chromosome_taxonomy: taxonomy:3702
+  # coord_system.version
+  - agrold_vocabulary:inAssembly:
+    - chromosome_assembly: "TAIR10"
+  # meta.select(meta_value WHERE (meta_key=schema_version))
+  - agrold_vocabulary:inSchemaNumber:
+    - chromosome_schema: "116"

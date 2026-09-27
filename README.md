@@ -129,4 +129,9 @@ $ python3 /path/to/ensembl_rdf/bin/xref_survey.py --missing-only --tsv   # ids t
 The report gives, per source, the number of species using it, the number of xrefs, an example accession and its current URL, so the sources worth mapping come first. Ids already listed with an empty URL are filled in place; ids the table does not know are printed by `--tsv`, ready to append.
 
 ## RDF schema
-[RDF-config](https://github.com/dbcls/rdf-config/blob/master/config/ensembl/model.yaml)
+The model is described in the [rdf-config](https://github.com/dbcls/rdf-config) format, one entity per Turtle file with an example value for each property:
+
+- [rdf-config/model.yaml](rdf-config/model.yaml) — the Ensembl model, as the `ensembl` profile emits it (upstream version: [dbcls/rdf-config](https://github.com/dbcls/rdf-config/blob/master/config/ensembl/model.yaml))
+- [rdf-config/agrold/model.yaml](rdf-config/agrold/model.yaml) — the same model as the `agrold` profile emits it: AgroLD classes, Ensembl properties, `purl.agrold.org` URIs and named FALDO regions
+
+Each comes with its `prefix.yaml`. Update them along with the converter: they are the reference for anyone querying the result.

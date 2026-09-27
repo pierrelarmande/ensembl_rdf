@@ -109,6 +109,23 @@
   ## xref.ttl
   - rdfs:seeAlso*:
     - enst_xref: <http://identifiers.org/refseq/NM_014466>
+  # transcript_attrib.select(value WHERE (attrib_type_id=attrib_type.select(attrib_type_id WHERE (code="MANE_Select" or code="MANE_Plus_Clinical"))))
+  ## Only for the MANE transcripts, which also get a versioned counterpart.
+  - terms:has_versioned_transcript?:
+    - enst_versioned: VersionedTranscript
+
+- VersionedTranscript enst:ENST00000207457.9:
+  - a: terms:VersionedTranscript
+  # transcript.version
+  - terms:has_version:
+    - versioned_transcript_version: 9
+  - dcterms:identifier:
+    - versioned_transcript_id: "ENST00000207457.9"
+  - terms:has_transcript_flag:
+    - versioned_transcript_flag: ensgloss:ENSGLOSSARY_0000365  # MANE Select
+  # transcript_attrib.value, the RefSeq counterpart of a MANE transcript
+  - terms:has_counterpart:
+    - versioned_transcript_counterpart: refseq:NM_014466.5
 
 - EnsemblTranscriptFlagComment <http://rdf.ebi.ac.uk/resource/ensembl.transcript/#_ENST00000207457-has_transcript_flag-tsl1>:
   - a: rdf:Statement
@@ -144,7 +161,10 @@
             - ense_chromosome: <http://rdf.ebi.ac.uk/resource/ensembl/109/homo_sapiens/GRCh38/16>
       - faldo:end:
         - []:
-          - a: faldo:ExactPosition
+          - a:
+            - faldo:ExactPosition
+            - faldo:ForwardStrandPosition
+            - faldo:ReverseStrandPosition
           - faldo:position:
             - ense_end: 18793370
 
@@ -157,6 +177,20 @@
   # exon_transcript.select(rank WHERE (transcript_id=transcript.transcript_id))
   - sio:SIO_000300: # has value
     - ensembl_ordered_exon_index: 7
+
+## chromosome.ttl
+## The regions the other entities sit on: only those actually referenced, so the
+## contigs and scaffolds of a seq_region table are left out.
+- Chromosome <http://rdf.ebi.ac.uk/resource/ensembl/110/homo_sapiens/GRCh38/X>:
+  - a: obo:SO_0000340   # chromosome; only for a chromosome coordinate system
+  # seq_region.name
+  - rdfs:label:
+    - chromosome_label: "X"
+  - dcterms:identifier:
+    - chromosome_id: "X"
+  # meta.select(meta_value WHERE (meta_key=species.taxonomy_id))
+  - obo:RO_0002162:
+    - chromosome_taxonomy: taxonomy:9606
 
 ## translation.ttl
 - EnsemblProtein ensp:ENSP00000473889:
