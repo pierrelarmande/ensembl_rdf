@@ -162,6 +162,17 @@ class Ensembl2turtle:
         "cds_end_NF": {"1": "ensgloss:ENSGLOSSARY_0000022"}
     }
 
+    # `code` of attrib_type entries that appear on transcripts but are not flags.
+    # Listing them keeps the warning below meaningful: an attribute that is not
+    # here has not been looked at yet, and may well deserve to be converted.
+    non_flag_attributes = {
+        # sequence checksums
+        "md5_cdna", "md5_cds", "sha512t24u_cdna", "sha512t24u_cds",
+        # secondary structure annotations
+        "miRNA",   # Micro RNA
+        "ncRNA",   # Structure
+    }
+
     hco_chr_names = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
                      "11", "12", "13", "14", "15", "16", "17", "18",
                      "19", "20", "21", "22", "X", "Y", "MT"]
@@ -484,7 +495,7 @@ class Ensembl2turtle:
                         self.triple(sbj, self.t["has_transcript_flag"], flag_dic[attrib_code][attrib_val])
                     except KeyError as e:
                         print(f"Warning: KeyError: {e}; {sbj} {attrib_code} {attrib_val}", file=sys.stderr)
-                else:
+                elif attrib_code not in Ensembl2turtle.non_flag_attributes:
                     if attrib[0] not in unknown_flags:
                         print(f"Warning: Attribute not treated as flag: {attrib[0]} {attrib_code}", file=sys.stderr)
                         unknown_flags.add(attrib[0])
