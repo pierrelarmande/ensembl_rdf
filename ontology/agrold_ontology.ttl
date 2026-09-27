@@ -123,3 +123,18 @@
 :OrderedExon owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblOrderedExon> .
 :Protein owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblProtein> .
 :Transcript owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblTranscript> .
+
+
+# Terms of this profile the Ensembl ontology does not define
+
+:Chromosome
+    a owl:Class ;
+    rdfs:label "Chromosome" .
+
+:inAssembly
+    a owl:DatatypeProperty ;
+    rdfs:label "in assembly" .
+
+:inSchemaNumber
+    a owl:DatatypeProperty ;
+    rdfs:label "in schema number" .

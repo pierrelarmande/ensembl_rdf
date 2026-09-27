@@ -25,7 +25,7 @@ $ bash /path/to/ensembl_rdf/bin/convert.sh -s arabidopsis_thaliana
 $ bash /path/to/ensembl_rdf/bin/convert.sh -f /path/to/ensembl_rdf/config/species.yaml
 ```
 ### Selecting entity types
-Each entity type is written to its own Turtle file: `gene`, `transcript`, `translation`, `exon`, `exon_transcript`, `xref`. All are output by default; restrict with `-e` (only these) or `-x` (all but these), on the command line or as `entities` / `exclude` lists in the YAML file. Only the tables needed by the selected types are loaded. Excluding `exon` also excludes `exon_transcript`, which only links transcripts to exons.
+Each entity type is written to its own Turtle file: `gene`, `transcript`, `translation`, `exon`, `exon_transcript`, `xref`, `chromosome` (the regions the other entities sit on — only those actually referenced, so the contigs and scaffolds of a `seq_region` table are left out; it is written last for that reason). All are output by default; restrict with `-e` (only these) or `-x` (all but these), on the command line or as `entities` / `exclude` lists in the YAML file. Only the tables needed by the selected types are loaded. Excluding `exon` also excludes `exon_transcript`, which only links transcripts to exons.
 ```
 $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -x exon
 $ bash /path/to/ensembl_rdf/bin/convert.sh -s oryza_sativa -e gene -e transcript
@@ -57,6 +57,15 @@ resources:
   chromosome: {uri: "{base}/resource/chromosome/"}
 ```
 `{base}` is replaced by `-b`; `prefix` is the Turtle prefix (omit it to write full IRIs).
+
+The shape of a region URI and the form of the FALDO locations are profile options:
+```yaml
+options:
+  chromosome_pattern: "{taxon}/{assembly}/{chromosome}"   # {version}, {production_name} also available
+  faldo_named_regions: true    # <chromosome>:<begin>-<end>:<strand> instead of blank nodes
+  biotype_as_literal: false    # true writes has_biotype "protein_coding"
+```
+With `faldo_named_regions`, regions and positions are named resources that features sharing coordinates share, as in the AgroLD graph; the `ensembl` profile keeps the blank nodes the EBI publishes.
 
 The ontology of a profile is derived from [ontology/ensembl_ontology.ttl](ontology/ensembl_ontology.ttl) — renamed terms, profile namespace, and an `owl:equivalentClass` / `owl:equivalentProperty` link back to the Ensembl term each one derives from:
 ```

@@ -14,7 +14,7 @@ Convert Ensembl core MySQL dumps to RDF. Species are resolved to the
   -s SPECIES  production name (e.g. arabidopsis_thaliana); may be repeated
   -f FILE     YAML file with \`species\`, \`entities\`, \`exclude\` lists (see config/species.yaml)
   -e ENTITY   only output this entity type; may be repeated (default: all of
-              gene transcript translation exon exon_transcript xref)
+              gene transcript translation exon exon_transcript xref chromosome)
   -x ENTITY   do not output this entity type; may be repeated
   -b URI      base of the resource URIs (default: http://rdf.ebi.ac.uk, e.g.
               -b http://purl.agrold.org gives http://purl.agrold.org/resource/ensembl/...)

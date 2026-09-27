@@ -22,6 +22,7 @@ terms:
   transcript_class: terms:EnsemblTranscript
   protein_class: terms:EnsemblProtein
   exon_class: terms:EnsemblExon
+  chromosome_class: obo:SO_0000340          # the Ensembl vocabulary has no chromosome class
   exon_so_class: obo:SO_0000147            # second type of an exon
   ordered_exon_class: terms:EnsemblOrderedExon
   ordered_list_item_class: sio:SIO_001261
@@ -54,6 +55,11 @@ terms:
   has_counterpart: terms:has_counterpart
 
 options:
+  # Shape of a region URI, appended to the chromosome resource URI
+  chromosome_pattern: "{version}/{production_name}/{assembly}/{chromosome}"
+  chromosome_lrg_pattern: "{version}/{production_name}/{chromosome}"
+  # Locations as blank nodes, as published by the EBI
+  faldo_named_regions: false
   # Biotypes as ontology terms (ENSGLOSSARY/SO), used both as rdf:type and as
   # object of has_biotype. Set to true to emit the raw biotype string instead.
   biotype_as_literal: false

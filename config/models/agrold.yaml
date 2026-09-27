@@ -28,6 +28,8 @@ terms:
   transcript_class: agrold_vocabulary:Transcript
   protein_class: agrold_vocabulary:Protein
   exon_class: agrold_vocabulary:Exon
+  chromosome_class: agrold_vocabulary:Chromosome
+  chromosome_so_class: obo:SO_0000340
   exon_so_class: obo:SO_0000147            # second type of an exon
   ordered_exon_class: agrold_vocabulary:OrderedExon
   ordered_list_item_class: sio:SIO_001261
@@ -53,11 +55,20 @@ terms:
   ordered_exon_refers_to: sio:SIO_000628   # ordered exon -> exon
   ordered_exon_rank: sio:SIO_000300        # rank value
 
+  in_assembly: agrold_vocabulary:inAssembly
+  in_schema_number: agrold_vocabulary:inSchemaNumber
+
   has_transcript_flag: agrold_vocabulary:has_transcript_flag
   has_versioned_transcript: agrold_vocabulary:has_versioned_transcript
   has_version: agrold_vocabulary:has_version
   has_counterpart: agrold_vocabulary:has_counterpart
 
 options:
+  # Regions keyed by taxon and assembly, as in the AgroLD graph
+  chromosome_pattern: "{taxon}/{assembly}/{chromosome}"
+  chromosome_lrg_pattern: "{taxon}/{chromosome}"
+  # Regions and positions as named resources, so features sharing coordinates
+  # share them: <chromosome>:<begin>-<end>:<strand>
+  faldo_named_regions: true
   biotype_as_literal: false
   biotype_as_type: true

@@ -158,16 +158,22 @@ class Ensembl2turtle:
         "translation": ["translation", "transcript"],
         "exon": ["exon"],
         "exon_transcript": ["exon_transcript", "transcript", "exon"],
-        "xref": ["gene", "transcript", "translation", "xref", "object_xref", "external_db"]
+        "xref": ["gene", "transcript", "translation", "xref", "object_xref", "external_db"],
+        "chromosome": ["seq_region", "coord_system"]
     }
     entities = list(entity_tables.keys())
 
     # URIs of the resources themselves; `uri` may use {base}, set by --base-uri
     resource_keys = ["gene", "transcript", "protein", "exon", "chromosome"]
 
+    # Terms whose object is a literal, not a resource (used to declare them
+    # as owl:DatatypeProperty when deriving a profile's ontology)
+    literal_terms = {"label", "description", "identifier", "alt_label", "has_version",
+                     "in_assembly", "in_schema_number", "ordered_exon_rank"}
+
     # Every element of the model a profile must map (config/models/*.yaml)
     model_keys = [
-        "gene_class", "transcript_class", "protein_class", "exon_class",
+        "gene_class", "transcript_class", "protein_class", "exon_class", "chromosome_class",
         "exon_so_class", "ordered_exon_class", "ordered_list_item_class",
         "versioned_transcript_class",
         "label", "description", "identifier", "alt_label", "see_also",
@@ -223,6 +229,8 @@ class Ensembl2turtle:
         self.output_file = sys.stdout
         self.biotype_url_dic = {}
         self.init_biotype_url_dic()
+        # Regions the converted features sit on; `chromosome` describes those
+        self.referenced_seq_regions = set()
 
     def init_biotype_url_dic(self):
         biotype_url_dic_tsv = "ontology/biotype_url.tsv"
@@ -365,13 +373,9 @@ class Ensembl2turtle:
 
             # location
             chromosome_urls = self.seq_region_id_to_chr(seq_region_id)
-            location = self.create_location_str(gene[id][1],
-                                                gene[id][2],
-                                                gene[id][3],
-                                                chromosome_urls)
-            self.triple(sbj, self.t["location"], location)
+            self.output_location(sbj, gene[id][1], gene[id][2], gene[id][3], chromosome_urls)
             for chromosome_url in chromosome_urls:
-                self.triple(sbj, self.t["part_of"], chromosome_url)
+                self.triple(sbj, self.t["part_of"], "<" + chromosome_url + ">")
         self.output_file = sys.stdout
         f.close()
         return
@@ -407,11 +411,8 @@ class Ensembl2turtle:
 
             # location
             chromosome_urls = self.seq_region_id_to_chr(transcript[id][8])
-            location = self.create_location_str(transcript[id][1],
-                                                transcript[id][2],
-                                                transcript[id][3],
-                                                chromosome_urls)
-            self.triple(sbj, self.t["location"], location)
+            self.output_location(sbj, transcript[id][1], transcript[id][2], transcript[id][3],
+                                 chromosome_urls)
 
             # flag
             attribs = transcript_attrib.get(id, [])
@@ -502,29 +503,38 @@ class Ensembl2turtle:
         return self.species_id2production_name[species_id]
 
     def seq_region_id_to_chr(self, seq_region_id):
+        """Bare URIs of the region a feature sits on (several for human, with HCO).
+
+        The shape comes from the model profile, e.g.
+        `{version}/{production_name}/{assembly}/{chromosome}` for Ensembl or
+        `{taxon}/{assembly}/{chromosome}` for AgroLD.
+        """
         seq_region = self.dbs["seq_region"]
         coord_system = self.dbs["coord_system"]
         chromosome_name = seq_region[seq_region_id][0]
         coord_system_id = seq_region[seq_region_id][1]
-        production_name = self.seq_region_id_to_production_name(seq_region_id)
-        chromosome_urls = []
-        # e.g. "GRCm38"
-        coord_system_version = coord_system[coord_system_id][2]
-        # e.g. <http://rdf.ebi.ac.uk/resource/ensembl/109/mus_musculus/GRCm38/Y>
-        chromosome_url = "<"+self.res["chromosome"]["uri"]+self.ensembl_version+"/"+production_name+"/"+coord_system_version+"/"+chromosome_name+">"
-        # For LRG, <http://rdf.ebi.ac.uk/resource/ensembl/109/homo_sapiens/LRG_1>">"
+        taxonomy_id = self.seq_region_id_to_taxonomy_id(seq_region_id)
+        fields = {
+            "version": self.ensembl_version,
+            "production_name": self.seq_region_id_to_production_name(seq_region_id),
+            "assembly": coord_system[coord_system_id][2],  # e.g. "GRCm38", "TAIR10"
+            "chromosome": chromosome_name,
+            "taxon": taxonomy_id,
+        }
+        # LRG regions have no assembly
+        pattern = self.opt.get("chromosome_pattern", "{version}/{production_name}/{assembly}/{chromosome}")
         if coord_system[coord_system_id][1] == "lrg":
-            chromosome_url = "<"+self.res["chromosome"]["uri"]+self.ensembl_version+"/"+production_name+"/"+chromosome_name+">"
-        chromosome_urls.append(chromosome_url)
+            pattern = self.opt.get("chromosome_lrg_pattern", "{version}/{production_name}/{chromosome}")
+        chromosome_urls = [self.res["chromosome"]["uri"] + pattern.format(**fields)]
 
-        if self.seq_region_id_to_taxonomy_id(seq_region_id) == "9606":
-            if chromosome_name in Ensembl2turtle.hco_chr_names:
-                hco_url = "<http://identifiers.org/hco/"+chromosome_name+"/"+coord_system_version+">"
-                chromosome_urls.append(hco_url)
+        if taxonomy_id == "9606" and chromosome_name in Ensembl2turtle.hco_chr_names:
+            chromosome_urls.append("http://identifiers.org/hco/" + chromosome_name + "/" + fields["assembly"])
 
+        self.referenced_seq_regions.add(seq_region_id)
         return chromosome_urls
 
     def create_location_str(self, beg, end, strand, chromosome_urls, level=1):
+        """Blank node describing the location, as in the Ensembl RDF."""
         loc = Bnode()
         loc_beg = Bnode()
         loc_end = Bnode()
@@ -537,13 +547,41 @@ class Ensembl2turtle:
         loc_end.add(("faldo:position", end))
 
         for chromosome_url in chromosome_urls:
-            loc_beg.add(("faldo:reference", chromosome_url))
-            loc_end.add(("faldo:reference", chromosome_url))
+            loc_beg.add(("faldo:reference", "<" + chromosome_url + ">"))
+            loc_end.add(("faldo:reference", "<" + chromosome_url + ">"))
 
         loc.add(("a", "faldo:Region"))
         loc.add(("faldo:begin", loc_beg.serialize(level=level+1)))
         loc.add(("faldo:end", loc_end.serialize(level=level+1)))
         return loc.serialize()
+
+    def output_location(self, sbj, beg, end, strand, chromosome_urls):
+        """Attach a location to `sbj`.
+
+        With `faldo_named_regions`, the region and its two positions are named
+        resources shaped after the region they sit on
+        (<chromosome>:<begin>-<end>:<strand>), so that features sharing
+        coordinates share them; otherwise they are blank nodes, as in the
+        Ensembl RDF.
+        """
+        if not self.opt.get("faldo_named_regions"):
+            self.triple(sbj, self.t["location"], self.create_location_str(beg, end, strand, chromosome_urls))
+            return
+
+        chromosome_url = chromosome_urls[0]
+        region = "<" + chromosome_url + ":" + beg + "-" + end + ":" + strand + ">"
+        self.triple(sbj, self.t["location"], region)
+        begin_uri = "<" + chromosome_url + ":" + beg + ":" + strand + ">"
+        end_uri = "<" + chromosome_url + ":" + end + ":" + strand + ">"
+        self.triple(region, "a", "faldo:Region")
+        self.triple(region, "faldo:begin", begin_uri)
+        self.triple(region, "faldo:end", end_uri)
+        for position_uri, position in ((begin_uri, beg), (end_uri, end)):
+            self.triple(position_uri, "a", "faldo:ExactPosition")
+            self.triple(position_uri, "a", strand2faldo(strand))
+            self.triple(position_uri, "faldo:position", position)
+            for url in chromosome_urls:
+                self.triple(position_uri, "faldo:reference", "<" + url + ">")
 
     def rdfize_translation(self):
         transcript = self.dbs["transcript"]
@@ -575,11 +613,7 @@ class Ensembl2turtle:
 
             # location
             chromosome_urls = self.seq_region_id_to_chr(exon[id][4])
-            location = self.create_location_str(exon[id][0],
-                                                exon[id][1],
-                                                exon[id][2],
-                                                chromosome_urls)
-            self.triple(sbj, self.t["location"], location)
+            self.output_location(sbj, exon[id][0], exon[id][1], exon[id][2], chromosome_urls)
         self.output_file = sys.stdout
         f.close()
         return
@@ -608,6 +642,42 @@ class Ensembl2turtle:
 
             self.triple(transcript_uri, self.t["has_exon"], exon_uri)
             self.triple(transcript_uri, self.t["has_ordered_exon"], ordered_exon_uri)
+        self.output_file = sys.stdout
+        f.close()
+        return
+
+    def rdfize_chromosome(self):
+        """Describe the regions the converted features sit on.
+
+        Only those actually referenced are described, so the thousands of
+        contigs and scaffolds of a seq_region table are left out. When no other
+        entity ran, every region of a chromosome coordinate system is taken.
+        """
+        seq_region = self.dbs["seq_region"]
+        coord_system = self.dbs["coord_system"]
+        ids = self.referenced_seq_regions
+        if not ids:
+            ids = {i for i in seq_region if coord_system[seq_region[i][1]][1] == "chromosome"}
+        f = open("chromosome.ttl", mode="w")
+        self.output_file = f
+        self.output_prefixes()
+        for seq_region_id in sorted(ids):
+            coord_system_id = seq_region[seq_region_id][1]
+            name = seq_region[seq_region_id][0]
+            sbj = "<" + self.seq_region_id_to_chr(seq_region_id)[0] + ">"
+
+            if coord_system[coord_system_id][1] == "chromosome":
+                self.triple(sbj, "a", self.t["chromosome_class"])
+            if self.t.get("chromosome_so_class"):
+                self.triple(sbj, "a", self.t["chromosome_so_class"])
+            self.triple(sbj, self.t["label"], quote(name))
+            self.triple(sbj, self.t["identifier"], quote(name))
+            self.triple(sbj, self.t["in_taxon"],
+                        "taxonomy:" + self.seq_region_id_to_taxonomy_id(seq_region_id))
+            if self.t.get("in_assembly"):
+                self.triple(sbj, self.t["in_assembly"], quote(coord_system[coord_system_id][2]))
+            if self.t.get("in_schema_number"):
+                self.triple(sbj, self.t["in_schema_number"], quote(self.ensembl_version))
         self.output_file = sys.stdout
         f.close()
         return
@@ -669,7 +739,8 @@ class Ensembl2turtle:
             "translation": self.rdfize_translation,
             "exon": self.rdfize_exon,
             "exon_transcript": self.rdfize_exon_transcript,
-            "xref": self.rdfize_xref
+            "xref": self.rdfize_xref,
+            "chromosome": self.rdfize_chromosome
         }
         for entity in self.entities:
             dt_now = datetime.datetime.now()

@@ -56,6 +56,35 @@ def block_subject(block):
     return match.group(1) if match else None
 
 
+def declare_new_terms(text, source, target, target_prefix):
+    """Declare the profile's own terms that the source ontology does not define.
+
+    A profile may introduce terms of its own (AgroLD's Chromosome, inAssembly,
+    inSchemaNumber), or move to its vocabulary a term the Ensembl model took
+    from another ontology. Those get a minimal declaration so that nothing the
+    converter emits is undefined.
+    """
+    defined = set(re.findall(r"^:([A-Za-z_][A-Za-z0-9_]*)", text, re.M))
+    declarations, added = "", []
+    for key, term in sorted(target["terms"].items()):
+        name = local_name(term, target_prefix)
+        if name is None or name in defined:
+            continue
+        if name[0].isupper():
+            kind = "owl:Class"
+        elif key in Ensembl2turtle.literal_terms:
+            kind = "owl:DatatypeProperty"
+        else:
+            kind = "owl:ObjectProperty"
+        declarations += "\n:%s\n    a %s ;\n    rdfs:label \"%s\" .\n" % (
+            name, kind, words_of(name))
+        added.append(name)
+        defined.add(name)
+    if declarations:
+        text = text.rstrip("\n") + "\n\n\n# Terms of this profile the Ensembl ontology does not define\n" + declarations
+    return text, added
+
+
 def rewrite(text, renaming, source_uri, target_uri, target_prefix):
     blocks = text.split("\n\n")
     kept, dropped = [], []
@@ -123,13 +152,15 @@ def main():
     with open(args.source, "r") as f:
         text = f.read()
     text, dropped = rewrite(text, renaming, source_uri, target_uri, target_prefix)
+    text, added = declare_new_terms(text, source, target, target_prefix)
 
     output = args.output or BASE_DIR + "ontology/" + name + "_ontology.ttl"
     with open(output, "w") as f:
         f.write(text)
     renamed = {k: v for k, v in renaming.items() if v and v != k}
     print(f"{output}: {len(renamed)} terms renamed, {len(dropped)} dropped "
-          f"({', '.join(dropped) if dropped else 'none'})", file=sys.stderr)
+          f"({', '.join(dropped) if dropped else 'none'}), "
+          f"{len(added)} declared ({', '.join(added) if added else 'none'})", file=sys.stderr)
 
 
 if __name__ == "__main__":
