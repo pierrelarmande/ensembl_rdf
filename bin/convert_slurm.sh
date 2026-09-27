@@ -37,7 +37,8 @@ WORKDIR=$(cd "$WORKDIR" && pwd)
 # module load python/3.11 raptor
 # conda activate ensembl_rdf
 command -v rapper >/dev/null || { echo "Error: rapper (raptor) not found in PATH" >&2; exit 1; }
-python3 -c "import yaml" 2>/dev/null || { echo "Error: PyYAML not installed" >&2; exit 1; }
+python3 -c "import yaml" 2>/dev/null || {
+    echo "Error: PyYAML not installed (pip install -r requirements.txt)" >&2; exit 1; }
 
 SPECIES=$(python3 "$SCRIPT_DIR/species_config.py" species "$CONFIG" | sed -n "${TASK}p")
 if [ -z "$SPECIES" ]; then

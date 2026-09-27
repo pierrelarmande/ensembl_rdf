@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: ensembl-rdf
+Version: 0.2.0
+Summary: Convert Ensembl core databases to RDF, with a configurable vocabulary
+Requires-Python: >=3.8
+Requires-Dist: PyYAML>=5.1
+Provides-Extra: memory
+Requires-Dist: psutil>=5.0; extra == "memory"

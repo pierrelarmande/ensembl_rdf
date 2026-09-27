@@ -1,4 +1,13 @@
 # Ensembl RDF converter by DBCLS
+
+## Requirements
+Python 3.8 or later with [PyYAML](https://pypi.org/project/PyYAML/), and [rapper](https://librdf.org/raptor/rapper.html) from the Raptor RDF Syntax Library, which `convert.sh` uses to check and normalize the Turtle files:
+```
+$ pip install -r requirements.txt
+$ apt install raptor2-utils        # Debian/Ubuntu; brew install raptor on macOS
+```
+`psutil` is optional: it reports resident memory while the tables load, and the converter falls back to the standard library without it.
+
 ## Data download
 Give the base URL (https:// or ftp://) of the MySQL dump directory. Only the tables listed in `config/dbinfo.json` are downloaded, for every `*_core_*` database.
 ```

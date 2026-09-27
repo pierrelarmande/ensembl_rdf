@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+bin/download_files.py
+bin/make_ontology.py
+bin/rdf_converter_ensembl_db.py
+bin/run.py
+bin/species_config.py
+bin/xref_survey.py
+bin/ensembl_rdf.egg-info/PKG-INFO
+bin/ensembl_rdf.egg-info/SOURCES.txt
+bin/ensembl_rdf.egg-info/dependency_links.txt
+bin/ensembl_rdf.egg-info/entry_points.txt
+bin/ensembl_rdf.egg-info/requires.txt
+bin/ensembl_rdf.egg-info/top_level.txt
