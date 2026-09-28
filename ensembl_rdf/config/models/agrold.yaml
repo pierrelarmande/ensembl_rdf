@@ -64,9 +64,11 @@ terms:
   has_counterpart: agrold_vocabulary:has_counterpart
 
 options:
-  # Identifiers kept as they are in the URIs, only escaped for the Turtle
-  # syntax, so a URI holds the stable ID exactly as Ensembl publishes it.
-  percent_encode_ids: false
+  # Identifiers percent-encoded in the URIs, as upstream does: it is the only
+  # escaping that covers every character. Escaping for the Turtle syntax alone
+  # would keep the stable ID readable in the URI, but leaves `|` or a space
+  # unescaped, which no prefixed name can hold.
+  percent_encode_ids: true
   # AgroLD is articulated on NCBI taxa (globalVars.ncbi_tax_uri), not on the
   # Ensembl genome URIs upstream switched to.
   in_taxon_object: taxonomy
