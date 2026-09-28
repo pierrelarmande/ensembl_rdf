@@ -1,2 +1,4 @@
+.DS_Store
+__pycache__/
+ensembl_rdf/__pycache__/
 venv
-ensembl_rdf/__pycache__

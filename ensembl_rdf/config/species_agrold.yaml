@@ -1,0 +1,63 @@
+# The 51 plant species integrated in AgroLD, as Ensembl Plants production names.
+#
+# Matched to Ensembl Plants release 63 (Ensembl 116) by NCBI taxon ID, from
+# https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/species_EnsemblPlants.txt
+# Where several genomes share a taxon ID (18 bread wheat cultivars, 7 barleys,
+# 10 indica rices, ...), the reference genome is used: matching is anchored on
+# `<name>_core_`, so `triticum_aestivum` does not pull in
+# `triticum_aestivum_cadenza`.
+url: https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
+model: agrold
+base_uri: http://purl.agrold.org
+species:
+  - aegilops_tauschii                      # 200361 Aegilops tauschii subsp. strangulata
+  - amborella_trichopoda                   # 13333
+  - ananas_comosus                         # 4615
+  - arabidopsis_halleri                    # 63677 A. halleri subsp. gemmifera
+  - arabidopsis_lyrata                     # 81972 A. lyrata subsp. lyrata
+  - arabidopsis_thaliana                   # 3702
+  - beta_vulgaris                          # 3555
+  - brachypodium_distachyon                # 15368
+  - brassica_napus                         # 3708
+  - brassica_oleracea                      # 109376 B. oleracea var. oleracea
+  - brassica_rapa                          # 3711  (also brassica_rapa_z1)
+  - citrus_clementina                      # 85681
+  - coffea_canephora                       # 49390
+  - daucus_carota                          # 79200 D. carota subsp. sativus
+  - digitaria_exilis                       # 1010633
+  - glycine_max                            # 3847
+  - gossypium_raimondii_gca025698545v1rs   # 29730 (only genome available)
+  - helianthus_annuus                      # 4232
+  - hordeum_vulgare                        # 112509 (also 6 cultivars)
+  - malus_domestica_golden                 # 3750  (only genome available)
+  - manihot_esculenta                      # 3983
+  - musa_acuminata                         # 214687 M. acuminata subsp. malaccensis
+  - nicotiana_attenuata                    # 49451
+  - olea_europaea                          # 158383
+  - oryza_barthii                          # 65489
+  - oryza_brachyantha                      # 4533
+  - oryza_glaberrima                       # 4538
+  - oryza_glumipatula                      # 40148
+  - oryza_longistaminata                   # 4528
+  - oryza_meridionalis                     # 40149
+  - oryza_nivara                           # 4536
+  - oryza_punctata                         # 4537
+  - oryza_rufipogon                        # 4529
+  - oryza_indica                           # 39946 O. sativa Indica Group (also 9 cultivars)
+  - oryza_sativa                           # 39947 O. sativa Japonica Group
+  - phaseolus_vulgaris                     # 3885
+  - prunus_avium                           # 42229
+  - prunus_dulcis                          # 3755
+  - prunus_persica                         # 3760
+  - saccharum_spontaneum                   # 62335
+  - setaria_italica                        # 4555
+  - solanum_lycopersicum_gca000188115v5cm  # 4081  Heinz1706 (only genome available)
+  - solanum_tuberosum                      # 4113  (also solanum_tuberosum_rh8903916)
+  - sorghum_bicolor                        # 4558
+  - theobroma_cacao                        # 3641  Matina 1-6 (also _criollo)
+  - triticum_aestivum                      # 4565  (also 18 cultivars)
+  - triticum_dicoccoides                   # 85692
+  - triticum_turgidum                      # 4567  T. turgidum subsp. durum
+  - triticum_urartu                        # 4572
+  - vitis_vinifera                         # 29760
+  - zea_mays                               # 4577

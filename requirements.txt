@@ -1,0 +1,15 @@
+# Python dependencies. Install with: pip install -r requirements.txt
+#
+# System dependency, not installable with pip: rapper, from the Raptor RDF
+# Syntax Library, used by convert.sh to check and normalize the Turtle files.
+#   Debian/Ubuntu: apt install raptor2-utils
+#   macOS:         brew install raptor
+#   conda:         conda install -c conda-forge raptor
+
+# Reads the species and model configuration files (config/*.yaml,
+# config/models/*.yaml). Required: every conversion reads a model profile.
+PyYAML>=5.1
+
+# Optional: reports resident memory while the tables are loaded. Without it the
+# converter falls back to the standard library's `resource` module.
+psutil>=5.0
