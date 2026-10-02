@@ -166,7 +166,9 @@ def main():
         print("\n".join(todo))
         return 0
     if shutil.which("rapper") is None:
-        sys.exit("Error: rapper (raptor) not found in PATH")
+        log("Warning: rapper not found in PATH; files will not be validated or "
+            "normalized and the manifest will carry no triple count "
+            "(conda create -n rapper -c conda-forge 'raptor=2')")
 
     entries = []
     if args.jobs > 1 and not args.stop_on_error:
@@ -206,6 +208,7 @@ def main():
             "exclude": conf["exclude"],
         },
         "totals": {
+            "rapper": shutil.which("rapper") is not None,
             "species": len(entries),
             "done": len(entries) - len(failed),
             "failed": len(failed),

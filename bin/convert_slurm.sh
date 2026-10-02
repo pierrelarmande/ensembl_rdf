@@ -36,7 +36,7 @@ WORKDIR=$(cd "$WORKDIR" && pwd)
 # Cluster environment: adapt to your site (module, conda, ...).
 # module load python/3.11 raptor
 # conda activate ensembl_rdf
-command -v rapper >/dev/null || { echo "Error: rapper (raptor) not found in PATH" >&2; exit 1; }
+command -v rapper >/dev/null || echo "Warning: rapper not in PATH; Turtle will not be validated" >&2
 python3 -c "import yaml" 2>/dev/null || {
     echo "Error: PyYAML not installed (pip install -r requirements.txt)" >&2; exit 1; }
 

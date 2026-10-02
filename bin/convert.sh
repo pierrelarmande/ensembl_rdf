@@ -90,6 +90,23 @@ SELECTED=$(python3 "$SCRIPT_DIR/rdf_converter_ensembl_db.py" --list-targets \
     "$CONFIG_DIR/dbinfo.json" . "${CONV_OPTS[@]+"${CONV_OPTS[@]}"}")
 echo "Entities: $SELECTED" >&2
 
+# rapper validates and normalizes the Turtle; it does not produce it, so a run
+# without it still yields valid files — just unnormalized, unchecked, and with
+# no triple count for the manifest.
+HAVE_RAPPER=1
+if ! command -v rapper >/dev/null; then
+    HAVE_RAPPER=0
+    cat >&2 <<'EOT'
+Warning: rapper not found in PATH; the Turtle files will be written and gzipped
+         but neither validated nor normalized, and the manifest will carry no
+         triple count. rapper comes with the Raptor RDF Syntax Library:
+           conda create -n rapper -c conda-forge 'raptor=2'
+           apt install raptor2-utils
+         Beware of the homonym: on bioconda, `raptor` is SeqAn's sequence
+         pre-filter (3.x), not this library (2.x), and provides no rapper.
+EOT
+fi
+
 # Record how many triples rapper parsed, for the run manifest (bin/run.py)
 record_triples() {
     local file=$1 stderr=$2
@@ -195,7 +212,9 @@ for d in "${DIRS[@]}"; do
 
         for f in $SELECTED; do
             if [ -f "$f.ttl" ]; then
-                process_turtle_file "$f.ttl"
+                if [ "$HAVE_RAPPER" -eq 1 ]; then
+                    process_turtle_file "$f.ttl"
+                fi
                 gzip -f "$f.ttl"
             else
                 echo "Warning: $f.ttl not found" >&2

@@ -5,7 +5,12 @@ Python 3.8 or later with [PyYAML](https://pypi.org/project/PyYAML/), and [rapper
 ```
 $ pip install -r requirements.txt
 $ apt install raptor2-utils        # Debian/Ubuntu; brew install raptor on macOS
+$ conda create -n rapper -c conda-forge 'raptor=2'      # or with conda
 ```
+Beware of a homonym: on **bioconda**, `raptor` is SeqAn's sequence pre-filter (3.x) and provides no `rapper`; the RDF library is the **conda-forge** `raptor` (2.x). Check with `rapper --version`.
+
+`rapper` validates and normalizes the Turtle but does not produce it: without it the conversion still writes valid files, only unnormalized, unchecked, and with no triple count in the manifest. A warning says so.
+
 `psutil` is optional: it reports resident memory while the tables load, and the converter falls back to the standard library without it.
 
 ## Data download
