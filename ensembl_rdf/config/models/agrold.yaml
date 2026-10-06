@@ -63,6 +63,11 @@ terms:
   has_version: agrold_vocabulary:has_version
   has_counterpart: agrold_vocabulary:has_counterpart
 
+  # Pairwise orthology/paralogy (bin/compara_orthology.py). SIO is a neutral
+  # ontology, used the same way by both profiles.
+  is_orthologous_to: sio:SIO_000558
+  is_paralogous_to: sio:SIO_000630
+
 options:
   # Identifiers percent-encoded in the URIs, as upstream does: it is the only
   # escaping that covers every character. Escaping for the Turtle syntax alone

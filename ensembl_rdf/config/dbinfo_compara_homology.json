@@ -1,0 +1,58 @@
+{
+  "genome_db": {
+    "filename": "genome_db.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "taxon_id"},
+      {"index": 2, "name": "name"},
+      {"index": 3, "name": "assembly"}
+    ]
+  },
+  "species_set": {
+    "filename": "species_set.txt.gz",
+    "key_indices": [0],
+    "list": true,
+    "values": [
+      {"index": 1, "name": "genome_db_id"}
+    ]
+  },
+  "method_link": {
+    "filename": "method_link.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "type"}
+    ]
+  },
+  "method_link_species_set": {
+    "filename": "method_link_species_set.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "method_link_id"},
+      {"index": 2, "name": "species_set_id"}
+    ]
+  },
+  "gene_member": {
+    "filename": "gene_member.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "stable_id"},
+      {"index": 5, "name": "genome_db_id"}
+    ]
+  },
+  "homology": {
+    "filename": "homology.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "method_link_species_set_id"},
+      {"index": 2, "name": "description"}
+    ]
+  },
+  "homology_member": {
+    "filename": "homology_member.txt.gz",
+    "key_indices": [0],
+    "list": true,
+    "values": [
+      {"index": 1, "name": "gene_member_id"}
+    ]
+  }
+}

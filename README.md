@@ -109,6 +109,18 @@ $ sbatch --export=ALL,ENSEMBL_RDF_BIN=$PWD/bin,SITE_INIT=/path/to/site/init.sh .
 
 Sizing, measured on Ensembl Plants 63: the 51 species of `species_agrold.yaml` amount to 1.3 GB of compressed dumps. The converter loads the tables it needs in RAM, roughly 35-40x their compressed size (Arabidopsis: 44 MB of dumps, 1.6 GB of RAM, 39 s, 560 MB of Turtle before `rapper` and `gzip`, 28 MB after); 16 GB per task covers every plant species, bread wheat included.
 
+## Pairwise orthology and paralogy, from Ensembl Compara
+[bin/compara_orthology.py](bin/compara_orthology.py) emits, for every pair of species both listed in a species configuration, one statement per gene pair and direction (`gene:A sio:SIO_000558 gene:B` for orthologs, `sio:SIO_000630` for paralogs — the same SIO terms AgroLD's own vocabulary already uses for this), reading an Ensembl Compara dump:
+```
+$ python3 bin/download_compara.py https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
+$ python3 bin/compara_orthology.py ensembl_compara_plants_63_116 -f ensembl_rdf/config/species_agrold.yaml
+```
+Gene URIs are built the same way the per-species conversion builds them (same model profile, same `-b`/`-m` precedence), so the orthology triples link directly into that RDF.
+
+Compara is one dump for the whole division, not per species, covering every species pair Ensembl computed — most of no interest here. `homology_member.txt.gz` alone can exceed 50 GB compressed (Ensembl Plants 63: 60 GB), so `download_compara.py` only fetches the tables [ensembl_rdf/config/dbinfo_compara_homology.json](ensembl_rdf/config/dbinfo_compara_homology.json) lists, and `compara_orthology.py` streams `homology.txt.gz` and `homology_member.txt.gz` line by line rather than loading them, after using the small lookup tables to narrow the scan to species of interest. `--orthologs-only` / `--paralogs-only` restrict which relation type is emitted; memory and row counts are logged as the small tables load, to size a real run before it reaches the two large files.
+
+This is separate from [bin/rdf_converter_ensembl_compara.py](ensembl_rdf/rdf_converter_ensembl_compara.py), inherited from upstream, which emits gene-tree cluster membership (`orth:OrthologsCluster` / `orth:hasHomologousMember`) rather than typed pairwise relations, from the much smaller `gene_tree_*` tables ([dbinfo_compara.json](ensembl_rdf/config/dbinfo_compara.json)).
+
 ## Cross-reference sources
 Cross-references are turned into `rdfs:seeAlso` links using [ensembl_rdf/config/external_db_url.tsv](ensembl_rdf/config/external_db_url.tsv): one line per `external_db_id` (numeric, not the name), giving the URL the accession is appended to and, optionally, a prefix to strip from it. Sources with no URL are reported in `xref_report.tsv` next to each converted database, and no link is emitted for them.
 

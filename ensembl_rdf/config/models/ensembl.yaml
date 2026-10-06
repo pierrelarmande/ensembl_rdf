@@ -54,6 +54,11 @@ terms:
   has_version: terms:has_version
   has_counterpart: terms:has_counterpart
 
+  # Pairwise orthology/paralogy (bin/compara_orthology.py). SIO is a neutral
+  # ontology, used the same way by both profiles.
+  is_orthologous_to: sio:SIO_000558
+  is_paralogous_to: sio:SIO_000630
+
 options:
   # Identifiers percent-encoded in the URIs, as the EBI publishes them: the rice
   # plastid exon `transcript-3'rps12-E1` becomes `transcript-3%27rps12-E1`.
