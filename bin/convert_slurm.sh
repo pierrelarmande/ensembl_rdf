@@ -12,9 +12,16 @@
 #   sbatch --array=1-$(python3 bin/species_config.py species ensembl_rdf/config/species_agrold.yaml | wc -l) \
 #          bin/convert_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir
 #
-# Each task downloads the core tables of its species, converts them and gzips
-# the Turtle files, all inside WORKDIR/<species>_core_*. Tasks are independent,
-# so a failed one can be resubmitted alone with --array=<n>.
+# Submit from the repository root. Each task downloads the core tables of its
+# species, converts them and gzips the Turtle files, all inside
+# WORKDIR/<species>_core_*. Tasks are independent, so a failed one can be
+# resubmitted alone with --array=<n>.
+#
+# This script locates its own bin/ directory on its own (Slurm copies the
+# batch script to a spool directory, so $0 cannot be trusted for that); if it
+# still fails, set ENSEMBL_RDF_BIN to bin/'s absolute path. If `module load`
+# fails here but works in an interactive shell, your site likely needs its
+# init script sourced explicitly in a batch shell — point SITE_INIT at it.
 #
 # Memory: the converter loads every table it needs in RAM, about 35-40x the
 # size of the compressed dumps (Arabidopsis: 44 MB of dumps -> 1.6 GB). 16 GB
@@ -24,8 +31,44 @@ set -euo pipefail
 
 CONFIG=${1:?usage: $0 CONFIG_YAML [WORKDIR]}
 WORKDIR=${2:-$PWD}
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 TASK=${SLURM_ARRAY_TASK_ID:-1}
+
+# Locate this script's own directory (bin/), where species_config.py,
+# download_files.py and convert.sh live. Under sbatch, Slurm copies the batch
+# script into its spool directory and runs it from there, so $0 resolves to
+# something like /var/spool/slurmd/jobNNNN/slurm_script, not to bin/ — dirname
+# "$0" is then useless. Try, in order: an explicit override, the plain dirname
+# (correct outside sbatch, e.g. when testing this script directly), what
+# `scontrol` knows the job was submitted as, and the standard repo layout
+# relative to the directory sbatch was run from.
+find_script_dir() {
+    local candidate
+    if [ -n "${ENSEMBL_RDF_BIN:-}" ] && [ -f "$ENSEMBL_RDF_BIN/species_config.py" ]; then
+        echo "$ENSEMBL_RDF_BIN"; return
+    fi
+    candidate=$(cd "$(dirname "$0")" 2>/dev/null && pwd) || candidate=""
+    if [ -n "$candidate" ] && [ -f "$candidate/species_config.py" ]; then
+        echo "$candidate"; return
+    fi
+    if [ -n "${SLURM_JOB_ID:-}" ] && command -v scontrol >/dev/null; then
+        candidate=$(scontrol show job "$SLURM_JOB_ID" 2>/dev/null \
+            | grep -oE 'Command=\S+' | cut -d= -f2 | xargs -r dirname 2>/dev/null)
+        if [ -n "$candidate" ] && [ -f "$candidate/species_config.py" ]; then
+            echo "$candidate"; return
+        fi
+    fi
+    if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "$SLURM_SUBMIT_DIR/bin/species_config.py" ]; then
+        echo "$SLURM_SUBMIT_DIR/bin"; return
+    fi
+    return 1
+}
+SCRIPT_DIR=$(find_script_dir) || {
+    echo "Error: cannot find this script's directory (bin/) — Slurm copies the" >&2
+    echo "       batch script to a spool directory, so \$0 is not reliable here." >&2
+    echo "       Set ENSEMBL_RDF_BIN to the absolute path of bin/ and resubmit," >&2
+    echo "       e.g.: sbatch --export=ALL,ENSEMBL_RDF_BIN=\$PWD/bin ..." >&2
+    exit 1
+}
 
 # The task changes directory, so make the paths absolute first
 [ -f "$CONFIG" ] || { echo "Error: no such config file: $CONFIG" >&2; exit 1; }
@@ -39,12 +82,16 @@ WORKDIR=$(cd "$WORKDIR" && pwd)
 # Set it empty to load nothing.
 MODULES=${MODULES-"bioinfo-trop raptor2/2.0.16"}
 if [ -n "$MODULES" ]; then
-    # `module` is a shell function, not a binary, and a batch shell may not
-    # have sourced it yet.
-    if ! type module >/dev/null 2>&1 && [ -n "${MODULESHOME:-}" ] \
-       && [ -f "$MODULESHOME/init/bash" ]; then
-        . "$MODULESHOME/init/bash"
-    fi
+    # `module` is a shell function, not a binary: a non-login batch shell may
+    # not have sourced the site's init script, in which case the command
+    # either does not exist, or runs but with a MODULEPATH too narrow to find
+    # a module that a login shell sees fine ("Unable to locate a modulefile").
+    # Point SITE_INIT at your site's script if none of the common ones work.
+    for f in "${SITE_INIT:-}" /etc/profile.d/modules.sh /etc/profile.d/lmod.sh \
+             "${MODULESHOME:-}/init/bash" /usr/share/lmod/lmod/init/bash \
+             /usr/share/Modules/init/bash; do
+        [ -n "$f" ] && [ -f "$f" ] && . "$f" && break
+    done
     if type module >/dev/null 2>&1; then
         for m in $MODULES; do
             module load "$m" || echo "Warning: could not load module $m" >&2

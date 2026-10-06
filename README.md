@@ -98,6 +98,12 @@ Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. 
 $ MODULES="raptor2 python/3.11" sbatch --array=1-51 bin/convert_slurm.sh ...
 $ MODULES="" sbatch ...            # load nothing; rapper already on the PATH
 ```
+Submit from the repository root. Two things go wrong only under `sbatch`, not when testing the script directly, because Slurm copies the batch script to a spool directory and runs it from there:
+- the script cannot find its own `bin/` directory — set `ENSEMBL_RDF_BIN` to its absolute path;
+- `module load` fails here but works in an interactive shell — a batch shell may not source the site's init script that sets up `MODULEPATH`; point `SITE_INIT` at it (e.g. `/etc/profile.d/modules.sh`).
+```
+$ sbatch --export=ALL,ENSEMBL_RDF_BIN=$PWD/bin,SITE_INIT=/path/to/site/init.sh ...
+```
 
 Sizing, measured on Ensembl Plants 63: the 51 species of `species_agrold.yaml` amount to 1.3 GB of compressed dumps. The converter loads the tables it needs in RAM, roughly 35-40x their compressed size (Arabidopsis: 44 MB of dumps, 1.6 GB of RAM, 39 s, 560 MB of Turtle before `rapper` and `gzip`, 28 MB after); 16 GB per task covers every plant species, bread wheat included.
 
