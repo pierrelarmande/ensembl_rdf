@@ -93,7 +93,11 @@ $ mkdir -p logs
 $ sbatch --array=1-$(python3 bin/species_config.py species ensembl_rdf/config/species_agrold.yaml | wc -l) \
          bin/convert_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir
 ```
-Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. Edit the `#SBATCH` header and the commented `module load` / `conda activate` lines for your site.
+Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. Edit the `#SBATCH` header for your site, and name the environment modules the task needs through `MODULES`, which defaults to `bioinfo-trop raptor2/2.0.16`:
+```
+$ MODULES="raptor2 python/3.11" sbatch --array=1-51 bin/convert_slurm.sh ...
+$ MODULES="" sbatch ...            # load nothing; rapper already on the PATH
+```
 
 Sizing, measured on Ensembl Plants 63: the 51 species of `species_agrold.yaml` amount to 1.3 GB of compressed dumps. The converter loads the tables it needs in RAM, roughly 35-40x their compressed size (Arabidopsis: 44 MB of dumps, 1.6 GB of RAM, 39 s, 560 MB of Turtle before `rapper` and `gzip`, 28 MB after); 16 GB per task covers every plant species, bread wheat included.
 

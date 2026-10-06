@@ -33,9 +33,29 @@ CONFIG=$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")
 mkdir -p "$WORKDIR"
 WORKDIR=$(cd "$WORKDIR" && pwd)
 
-# Cluster environment: adapt to your site (module, conda, ...).
-# module load python/3.11 raptor
-# conda activate ensembl_rdf
+# Cluster environment. MODULES names the environment modules to load, so a
+# different site only has to override it:
+#   MODULES="raptor2 python/3.11" sbatch ... bin/convert_slurm.sh ...
+# Set it empty to load nothing.
+MODULES=${MODULES-"bioinfo-trop raptor2/2.0.16"}
+if [ -n "$MODULES" ]; then
+    # `module` is a shell function, not a binary, and a batch shell may not
+    # have sourced it yet.
+    if ! type module >/dev/null 2>&1 && [ -n "${MODULESHOME:-}" ] \
+       && [ -f "$MODULESHOME/init/bash" ]; then
+        . "$MODULESHOME/init/bash"
+    fi
+    if type module >/dev/null 2>&1; then
+        for m in $MODULES; do
+            module load "$m" || echo "Warning: could not load module $m" >&2
+        done
+    else
+        echo "Warning: no module command; skipping $MODULES" >&2
+    fi
+fi
+# A conda environment or an extracted package works just as well:
+#   export PATH="$HOME/envs/rapper/bin:$PATH"
+
 command -v rapper >/dev/null || echo "Warning: rapper not in PATH; Turtle will not be validated" >&2
 python3 -c "import yaml" 2>/dev/null || {
     echo "Error: PyYAML not installed (pip install -r requirements.txt)" >&2; exit 1; }
