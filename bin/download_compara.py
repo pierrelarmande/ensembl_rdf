@@ -34,6 +34,11 @@ def main():
                         help="default: ensembl_rdf/config/dbinfo_compara_homology.json")
     parser.add_argument("-o", "--output", default=".",
                         help="where the *_compara_* directory goes (default: .)")
+    parser.add_argument("--force", action="store_true",
+                        help="redownload files that already exist (default: skip them — "
+                             "a complete file only exists under its final name once the "
+                             "download that produced it succeeded, since every fetch writes "
+                             "to a .part file renamed only on completion)")
     args = parser.parse_args()
 
     with open(args.dbinfo, "r") as f:
@@ -57,6 +62,9 @@ def main():
         if file not in wanted:
             continue
         path = os.path.join(local_dir, file)
+        if not args.force and os.path.exists(path):
+            log(f"Skipping (already downloaded): {compara_dir}/{file}")
+            continue
         log(f"Downloading: {compara_dir}/{file}")
         retry(f"downloading {path}", lambda: source.fetch(compara_dir + "/" + file, path + ".part"))
         os.replace(path + ".part", path)

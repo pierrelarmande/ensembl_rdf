@@ -55,16 +55,16 @@ if __name__ == "__main__":
     #        species_config.py entities FILE         -> the file's `entities` list (space separated)
     #        species_config.py exclude FILE          -> the file's `exclude` list (space separated)
     #        species_config.py species FILE          -> the species, one per line
-    #        species_config.py base_uri|terms_uri|model FILE -> that value (empty if unset)
+    #        species_config.py url|base_uri|terms_uri|model FILE -> that value (empty if unset)
     if len(sys.argv) < 3 or sys.argv[1] not in ("dirs", "species", "entities", "exclude",
-                                                "base_uri", "terms_uri", "model"):
+                                                "url", "base_uri", "terms_uri", "model"):
         sys.exit(__doc__)
     conf = load_config(sys.argv[2])
     if sys.argv[1] == "dirs":
         print("\n".join(d for d in sys.argv[3:] if match_core_dir(conf["species"], d.rstrip("/"))))
     elif sys.argv[1] == "species":
         print("\n".join(conf["species"]))
-    elif sys.argv[1] in ("base_uri", "terms_uri", "model"):
+    elif sys.argv[1] in ("url", "base_uri", "terms_uri", "model"):
         print(conf[sys.argv[1]] or "")
     else:
         print(" ".join(conf[sys.argv[1]]))

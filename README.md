@@ -115,6 +115,12 @@ Sizing, measured on Ensembl Plants 63: the 51 species of `species_agrold.yaml` a
 $ python3 bin/download_compara.py https://ftp.ebi.ac.uk/pub/ensemblgenomes/plants/current/mysql/
 $ python3 bin/compara_orthology.py ensembl_compara_plants_63_116 -f ensembl_rdf/config/species_agrold.yaml
 ```
+On a cluster, [bin/compara_slurm.sh](bin/compara_slurm.sh) runs both steps as a single Slurm task (not an array — Compara is one dump for the whole division), validates and normalizes the result with `rapper`, and optionally copies it to a project directory, the same way [bin/convert_slurm.sh](bin/convert_slurm.sh) does for the per-species conversion:
+```
+$ mkdir -p logs
+$ sbatch bin/compara_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir [/path/to/project_dir]
+```
+A resubmission skips files already downloaded (a file exists under its final name only once its download fully succeeded), so re-running after a failure does not restart a 65 GB download from scratch.
 Gene URIs are built the same way the per-species conversion builds them (same model profile, same `-b`/`-m` precedence), so the orthology triples link directly into that RDF.
 
 Compara is one dump for the whole division, not per species, covering every species pair Ensembl computed — most of no interest here. `homology_member.txt.gz` alone can exceed 50 GB compressed (Ensembl Plants 63: 60 GB), so `download_compara.py` only fetches the tables [ensembl_rdf/config/dbinfo_compara_homology.json](ensembl_rdf/config/dbinfo_compara_homology.json) lists, and `compara_orthology.py` streams `homology.txt.gz` and `homology_member.txt.gz` line by line rather than loading them, after using the small lookup tables to narrow the scan to species of interest. `--orthologs-only` / `--paralogs-only` restrict which relation type is emitted; memory and row counts are logged as the small tables load, to size a real run before it reaches the two large files.
