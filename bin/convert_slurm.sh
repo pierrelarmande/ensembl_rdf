@@ -10,12 +10,18 @@
 #
 #   mkdir -p logs
 #   sbatch --array=1-$(python3 bin/species_config.py species ensembl_rdf/config/species_agrold.yaml | wc -l) \
-#          bin/convert_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir
+#          bin/convert_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir [/path/to/project_dir]
 #
 # Submit from the repository root. Each task downloads the core tables of its
 # species, converts them and gzips the Turtle files, all inside
 # WORKDIR/<species>_core_*. Tasks are independent, so a failed one can be
 # resubmitted alone with --array=<n>.
+#
+# Give a third argument to also copy the results — *.ttl.gz, conversion.json,
+# triple_counts.tsv, xref_report.tsv — from WORKDIR into
+# PROJECT_DIR/<species>_core_*/ once the species converts successfully. The
+# downloaded MySQL dumps are not copied, since they are large and
+# re-downloadable; set COPY_RAW_TABLES=1 to copy them too.
 #
 # This script locates its own bin/ directory on its own (Slurm copies the
 # batch script to a spool directory, so $0 cannot be trusted for that); if it
@@ -29,8 +35,9 @@
 # cluster is tight, or raise it for a genome larger than wheat.
 set -euo pipefail
 
-CONFIG=${1:?usage: $0 CONFIG_YAML [WORKDIR]}
+CONFIG=${1:?usage: $0 CONFIG_YAML [WORKDIR] [PROJECT_DIR]}
 WORKDIR=${2:-$PWD}
+PROJECT_DIR=${3:-}
 TASK=${SLURM_ARRAY_TASK_ID:-1}
 
 # Locate this script's own directory (bin/), where species_config.py,
@@ -75,6 +82,10 @@ SCRIPT_DIR=$(find_script_dir) || {
 CONFIG=$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")
 mkdir -p "$WORKDIR"
 WORKDIR=$(cd "$WORKDIR" && pwd)
+if [ -n "$PROJECT_DIR" ]; then
+    mkdir -p "$PROJECT_DIR"
+    PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
+fi
 
 # Cluster environment. MODULES names the environment modules to load, so a
 # different site only has to override it:
@@ -126,3 +137,25 @@ bash "$SCRIPT_DIR/convert.sh" -f "$CONFIG" -s "$SPECIES"
 
 echo "[$(date)] task $TASK: $SPECIES done"
 du -sh "${SPECIES}"_core_* 2>/dev/null || true
+
+if [ -n "$PROJECT_DIR" ]; then
+    for species_dir in "${SPECIES}"_core_*; do
+        [ -d "$species_dir" ] || continue
+        dest="$PROJECT_DIR/$species_dir"
+        mkdir -p "$dest"
+        if command -v rsync >/dev/null; then
+            patterns=(--include='*.ttl.gz' --include='conversion.json' \
+                      --include='triple_counts.tsv' --include='xref_report.tsv')
+            [ "${COPY_RAW_TABLES:-0}" = "1" ] && patterns+=(--include='*.txt.gz')
+            rsync -a "${patterns[@]}" --exclude='*' "$species_dir/" "$dest/"
+        else
+            for pat in '*.ttl.gz' conversion.json triple_counts.tsv xref_report.tsv; do
+                cp -f "$species_dir"/$pat "$dest/" 2>/dev/null || true
+            done
+            if [ "${COPY_RAW_TABLES:-0}" = "1" ]; then
+                cp -f "$species_dir"/*.txt.gz "$dest/" 2>/dev/null || true
+            fi
+        fi
+        echo "[$(date)] task $TASK: copied results to $dest"
+    done
+fi
