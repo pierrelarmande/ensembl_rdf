@@ -120,7 +120,7 @@ On a cluster, [bin/compara_slurm.sh](bin/compara_slurm.sh) runs both steps as a 
 $ mkdir -p logs
 $ sbatch bin/compara_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir [/path/to/project_dir]
 ```
-A resubmission skips files already downloaded (a file exists under its final name only once its download fully succeeded), so re-running after a failure does not restart a 65 GB download from scratch.
+A resubmission skips files already downloaded (a file exists under its final name only once its download fully succeeded), so re-running after a failure does not restart a 65 GB download from scratch. Memory is unmeasured for a real run; the job requests the `highmem` partition and 96G as a reasoned starting point (raise `--mem` and move to `supermem` only if it gets OOM-killed — `supermem`'s infiniband buys nothing for this single-node job).
 
 If a species' Turtle was produced without rapper (its module not found, say), [bin/rapper_postprocess.sh](bin/rapper_postprocess.sh) validates, normalizes and records the triple count for the files already on disk, one species per array task, without re-downloading or re-converting anything:
 ```
