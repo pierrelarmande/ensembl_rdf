@@ -91,7 +91,7 @@ fi
 # different site only has to override it:
 #   MODULES="raptor2 python/3.11" sbatch ... bin/convert_slurm.sh ...
 # Set it empty to load nothing.
-MODULES=${MODULES-"bioinfo-trop raptor2/2.0.16"}
+MODULES=${MODULES-"bioinfo-itrop raptor2/2.0.16"}
 if [ -n "$MODULES" ]; then
     # `module` is a shell function, not a binary: a non-login batch shell may
     # not have sourced the site's init script, in which case the command

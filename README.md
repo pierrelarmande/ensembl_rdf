@@ -95,7 +95,7 @@ $ sbatch --array=1-$(python3 bin/species_config.py species ensembl_rdf/config/sp
 ```
 Give a third argument to also copy each species' results — `*.ttl.gz`, `conversion.json`, `triple_counts.tsv`, `xref_report.tsv` — into `PROJECT_DIR/<species>_core_*/` as soon as it converts, e.g. from a fast `$SCRATCH` into a `/project` directory with different retention or quota rules. The downloaded MySQL dumps are not copied, since they are large and re-downloadable; set `COPY_RAW_TABLES=1` to copy them too. Copying uses `rsync` when available, `cp` otherwise.
 
-Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. Edit the `#SBATCH` header for your site, and name the environment modules the task needs through `MODULES`, which defaults to `bioinfo-trop raptor2/2.0.16`:
+Tasks are independent, so a failed one is resubmitted alone with `--array=<n>`. Edit the `#SBATCH` header for your site, and name the environment modules the task needs through `MODULES`, which defaults to `bioinfo-itrop raptor2/2.0.16`:
 ```
 $ MODULES="raptor2 python/3.11" sbatch --array=1-51 bin/convert_slurm.sh ...
 $ MODULES="" sbatch ...            # load nothing; rapper already on the PATH

@@ -84,7 +84,7 @@ if [ -n "$PROJECT_DIR" ]; then
 fi
 
 # Cluster environment — same as convert_slurm.sh.
-MODULES=${MODULES-"bioinfo-trop raptor2/2.0.16"}
+MODULES=${MODULES-"bioinfo-itrop raptor2/2.0.16"}
 if [ -n "$MODULES" ]; then
     for f in "${SITE_INIT:-}" /etc/profile.d/modules.sh /etc/profile.d/lmod.sh \
              "${MODULESHOME:-}/init/bash" /usr/share/lmod/lmod/init/bash \
