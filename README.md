@@ -121,6 +121,12 @@ $ mkdir -p logs
 $ sbatch bin/compara_slurm.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir [/path/to/project_dir]
 ```
 A resubmission skips files already downloaded (a file exists under its final name only once its download fully succeeded), so re-running after a failure does not restart a 65 GB download from scratch.
+
+If a species' Turtle was produced without rapper (its module not found, say), [bin/rapper_postprocess.sh](bin/rapper_postprocess.sh) validates, normalizes and records the triple count for the files already on disk, one species per array task, without re-downloading or re-converting anything:
+```
+$ sbatch --array=1-51 bin/rapper_postprocess.sh ensembl_rdf/config/species_agrold.yaml /path/to/workdir
+$ python3 bin/run.py ensembl_rdf/config/species_agrold.yaml -o /path/to/workdir   # rebuilds manifest.json with the real counts
+```
 Gene URIs are built the same way the per-species conversion builds them (same model profile, same `-b`/`-m` precedence), so the orthology triples link directly into that RDF.
 
 Compara is one dump for the whole division, not per species, covering every species pair Ensembl computed — most of no interest here. `homology_member.txt.gz` alone can exceed 50 GB compressed (Ensembl Plants 63: 60 GB), so `download_compara.py` only fetches the tables [ensembl_rdf/config/dbinfo_compara_homology.json](ensembl_rdf/config/dbinfo_compara_homology.json) lists, and `compara_orthology.py` streams `homology.txt.gz` and `homology_member.txt.gz` line by line rather than loading them, after using the small lookup tables to narrow the scan to species of interest. `--orthologs-only` / `--paralogs-only` restrict which relation type is emitted; memory and row counts are logged as the small tables load, to size a real run before it reaches the two large files.
