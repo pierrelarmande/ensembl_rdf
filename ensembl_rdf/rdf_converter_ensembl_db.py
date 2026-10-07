@@ -671,6 +671,7 @@ class Genome2turtle(Ensembl2turtle):
         xref = self.dbs["xref"]
         object_xref = self.dbs["object_xref"]
         external_db = self.dbs["external_db"]
+        unknown_external_db_ids = set()
         f = open(os.path.join(self.input_data_dir, "xref.ttl"), mode="w")
         self.output_file = f
         self.output_prefixes()
@@ -691,6 +692,17 @@ class Genome2turtle(Ensembl2turtle):
             # xref_node.add(("dcterms:identifier", quote(xref[xref_id][1])))
             # self.triple(subject_url, "rdfs:seeAlso", xref_node.serialize())
             external_db_id = xref[xref_id][0]
+            if external_db_id not in external_db:
+                # Seen on some species (e.g. Gossypium raimondii, external_db_id
+                # 50924): an xref row points at an external_db_id this database's
+                # own external_db table has no entry for -- an inconsistency in
+                # the Ensembl dump itself, not something to fail the whole
+                # conversion over.
+                if external_db_id not in unknown_external_db_ids:
+                    print(f"Warning: external_db_id `{external_db_id}` has no "
+                         f"external_db entry, xref skipped", file=sys.stderr)
+                    unknown_external_db_ids.add(external_db_id)
+                continue
             external_db_code = external_db[external_db_id][0]
             if self.xref_url_dic.get(external_db_id, "") != "":
                 dbprimary_acc = xref[xref_id][1]
