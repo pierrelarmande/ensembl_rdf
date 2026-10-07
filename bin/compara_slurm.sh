@@ -2,9 +2,9 @@
 #SBATCH --job-name=ensembl_rdf_compara
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
-#SBATCH --cpus-per-task=1
 #SBATCH --partition=highmem
-#SBATCH --mem=96G
+#SBATCH --cpus-per-task=10
+#SBATCH --mem-per-cpu=9G
 #SBATCH --time=2-00:00:00
 #
 # Download an Ensembl Compara dump and emit pairwise orthology/paralogy
@@ -35,15 +35,20 @@
 # present there is already complete; --force redownloads anyway).
 #
 # Memory is UNMEASURED for a real run: it holds, for species of interest,
-# every relevant homology_id and gene_member_id-to-stable_id mapping. --mem
-# and --partition below are a reasoned guess, not a measurement: comfortably
-# inside the `highmem` partition's range and well under `supermem`'s >100G
-# tier, which buys nothing here anyway (its infiniband interconnect is for
-# multi-node jobs; this is a single process on one node). If this gets
-# OOM-killed, that is the actual signal to move to `supermem` -- raising
-# --mem here first (`sbatch --mem=192G ...` without editing the file works
-# too). compara_orthology.py logs row counts and memory as the small tables
-# load, before the run reaches the two large files, to judge a first run.
+# every relevant homology_id and gene_member_id-to-stable_id mapping.
+#
+# This cluster allocates memory per reserved CPU, not as a flat pool: the
+# `highmem` partition caps each CPU's share at 9G (MaxMemPerCPU), so a
+# single-CPU job like this one -- compara_orthology.py is single-threaded,
+# no parallelism to gain from more -- can get more total memory only by
+# reserving CPUs it will not otherwise use. --cpus-per-task=10 at 9G each
+# gives 90G, comfortably under `supermem`'s >100G tier, which buys nothing
+# here anyway (its infiniband interconnect is for multi-node jobs). If this
+# gets OOM-killed, raise --cpus-per-task (`sbatch --cpus-per-task=16 ...`,
+# still at 9G/cpu = 144G, no file edit needed) before reaching for
+# `supermem`. compara_orthology.py logs row counts and memory as the small
+# tables load, before the run reaches the two large files, to judge a first
+# run.
 set -euo pipefail
 
 CONFIG=${1:?usage: $0 CONFIG_YAML [WORKDIR] [PROJECT_DIR]}
