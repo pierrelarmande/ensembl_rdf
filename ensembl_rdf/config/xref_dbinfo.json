@@ -1,0 +1,17 @@
+{
+  "xref": {
+    "filename": "xref.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "external_db_id"},
+      {"index": 2, "name": "dbprimary_acc"}
+    ]
+  },
+  "external_db": {
+    "filename": "external_db.txt.gz",
+    "key_indices": [0],
+    "values": [
+      {"index": 1, "name": "db_name"}
+    ]
+  }
+}

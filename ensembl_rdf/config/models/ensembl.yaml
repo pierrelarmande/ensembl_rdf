@@ -1,0 +1,78 @@
+# Vocabulary profile: Ensembl RDF (EBI). This is the default model, as published
+# by the DBCLS converter; see rdf-config/model.yaml.
+#
+# `prefixes` are added to the Turtle header, `terms` maps each element of the
+# model to the class or property used for it. A value may be a prefixed name
+# (the prefix must be declared here or be one of the built-in ones) or a full
+# <IRI>.
+prefixes: {}
+
+# Resource URIs. `{base}` is replaced by --base-uri; `prefix` is the Turtle
+# prefix used for them (omit it to write full IRIs).
+resources:
+  gene:       {prefix: ensg, uri: "{base}/resource/ensembl/"}
+  transcript: {prefix: enst, uri: "{base}/resource/ensembl.transcript/"}
+  protein:    {prefix: ensp, uri: "{base}/resource/ensembl.protein/"}
+  exon:       {prefix: ense, uri: "{base}/resource/ensembl.exon/"}
+  chromosome: {uri: "{base}/resource/ensembl/"}
+
+terms:
+  # classes
+  gene_class: terms:EnsemblGene
+  transcript_class: terms:EnsemblTranscript
+  protein_class: terms:EnsemblProtein
+  exon_class: terms:EnsemblExon
+  chromosome_class: obo:SO_0000340          # the Ensembl vocabulary has no chromosome class
+  exon_so_class: obo:SO_0000147            # second type of an exon
+  ordered_exon_class: terms:EnsemblOrderedExon
+  ordered_list_item_class: sio:SIO_001261
+  versioned_transcript_class: terms:VersionedTranscript
+
+  # common properties
+  label: rdfs:label
+  description: dcterms:description
+  identifier: dcterms:identifier
+  alt_label: skos:altLabel
+  see_also: rdfs:seeAlso
+  in_taxon: obo:RO_0002162
+  location: faldo:location
+
+  # structural relations
+  has_biotype: terms:has_biotype
+  part_of: so:part_of                      # gene/transcript -> chromosome
+  transcribed_from: so:transcribed_from    # transcript -> gene
+  translates_to: so:translates_to          # transcript -> protein
+  translation_of: so:translation_of        # protein -> transcript
+  has_exon: so:has_part                    # transcript -> exon
+  has_ordered_exon: sio:SIO_000974         # transcript -> ordered exon
+  ordered_exon_refers_to: sio:SIO_000628   # ordered exon -> exon
+  ordered_exon_rank: sio:SIO_000300        # rank value
+
+  # transcript flags (Ensembl glossary) and MANE
+  has_transcript_flag: terms:has_transcript_flag
+  has_versioned_transcript: terms:has_versioned_transcript
+  has_version: terms:has_version
+  has_counterpart: terms:has_counterpart
+
+  # Pairwise orthology/paralogy (bin/compara_orthology.py). SIO is a neutral
+  # ontology, used the same way by both profiles.
+  is_orthologous_to: sio:SIO_000558
+  is_paralogous_to: sio:SIO_000630
+
+options:
+  # Identifiers percent-encoded in the URIs, as the EBI publishes them: the rice
+  # plastid exon `transcript-3'rps12-E1` becomes `transcript-3%27rps12-E1`.
+  percent_encode_ids: true
+  # `in taxon` points at the Ensembl genome (ensembl_plants:Oryza_sativa), which
+  # is what upstream emits; `taxonomy` points at the NCBI taxon instead.
+  in_taxon_object: ensembl_genome
+  # Shape of a region URI, appended to the chromosome resource URI
+  chromosome_pattern: "{version}/{production_name}/{assembly}/{chromosome}"
+  chromosome_no_assembly_pattern: "{version}/{production_name}/{chromosome}"
+  # Locations as blank nodes, as published by the EBI
+  faldo_named_regions: false
+  # Biotypes as ontology terms (ENSGLOSSARY/SO), used both as rdf:type and as
+  # object of has_biotype. Set to true to emit the raw biotype string instead.
+  biotype_as_literal: false
+  # Emit `a <biotype term>` in addition to has_biotype.
+  biotype_as_type: true

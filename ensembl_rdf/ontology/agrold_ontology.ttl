@@ -1,0 +1,140 @@
+@prefix : <http://purl.agrold.org/vocabulary/> .
+@prefix ensgloss: <http://ensembl.org/glossary/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+
+<http://purl.agrold.org/vocabulary/> a owl:Ontology .
+
+:Gene
+    a owl:Class ;
+    rdfs:label "Gene" .
+
+:Exon
+    a owl:Class ;
+    rdfs:label "Exon" .
+
+:Transcript
+    a owl:Class ;
+    rdfs:label "Transcript" .
+
+:Protein
+    a owl:Class ;
+    rdfs:label "Protein" .
+
+:OrderedExon
+    a owl:Class ;
+    rdfs:label "Ordered exon" .
+
+:VersionedTranscript
+    a owl:Class ;
+    rdfs:label "Versioned transcript" .
+
+
+:Biotype
+    a owl:Class ;
+    rdfs:label "Biotype" .
+
+:Artifact a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "artifact" .
+
+:IG_D_Pseudogene a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "IG D pseudogene" .
+
+:IG_LV_Gene a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "IG LV gene" .
+
+:LRG_Gene a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "LRG gene" .
+
+:Unknown_Likely_Coding a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "unknown likely coding" .
+
+:MiRNA_Primary_Transcript a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "miRNA primary transcript" .
+
+:Protein_Coding_LoF a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "protein coding LoF" .
+
+:Antitoxin a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "antitoxin" .
+
+:Nontranslating_CDS a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "nontranslating CDS" .
+
+:Pseudogene_With_CDS a owl:Class ;
+    rdfs:subClassOf :Biotype ;
+    rdfs:label "pseudogene with CDS" .
+
+:has_biotype
+    a owl:ObjectProperty ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf (
+            :Gene
+            :Transcript
+            )
+        ] ;
+    rdfs:range [
+        a owl:Class ;
+        owl:unionOf (
+            ensgloss:ENSGLOSSARY_0000025  # Biotype
+            :Biotype
+            )
+        ] ;
+    rdfs:label "has biotype" .
+
+:has_transcript_flag
+    a owl:ObjectProperty ;
+    rdfs:domain :Transcript ;
+    rdfs:range ensgloss:ENSGLOSSARY_0000003 ;  # Transcript
+    rdfs:label "has transcript flag" .
+
+:has_versioned_transcript
+    a owl:ObjectProperty ;
+    rdfs:domain :Transcript ;
+    rdfs:range :VersionedTranscript ;
+    rdfs:label "has versioned transcript" .
+
+:has_version
+    a owl:DatatypeProperty ;
+    rdfs:domain :VersionedTranscript ;
+    rdfs:label "has version" .
+
+:has_counterpart
+    a owl:ObjectProperty ;
+    rdfs:domain :VersionedTranscript ;
+    rdfs:range :VersionedTranscript ;
+    rdfs:label "has counterpart" .
+
+
+# Terms of the Ensembl vocabulary these are derived from
+:Exon owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblExon> .
+:Gene owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblGene> .
+:OrderedExon owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblOrderedExon> .
+:Protein owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblProtein> .
+:Transcript owl:equivalentClass <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblTranscript> .
+
+
+# Terms of this profile the Ensembl ontology does not define
+
+:Chromosome
+    a owl:Class ;
+    rdfs:label "Chromosome" .
+
+:inAssembly
+    a owl:DatatypeProperty ;
+    rdfs:label "in assembly" .
+
+:inSchemaNumber
+    a owl:DatatypeProperty ;
+    rdfs:label "in schema number" .
